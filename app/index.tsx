@@ -1,76 +1,74 @@
-import React from 'react';
-import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { router } from "expo-router";
+import React from "react";
+import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import {
   responsiveFontSize,
   responsiveScreenHeight,
-  responsiveScreenWidth
+  responsiveScreenWidth,
 } from "react-native-responsive-dimensions";
 
 const index = () => {
   return (
     <View style={styles.HomeScreen}>
       <View style={styles.img}>
-        <Image source={require('../assets/AppImg/home.png')} />
+        <Image source={require("../assets/AppImg/home.png")} />
       </View>
       <View style={styles.textArea}>
-        <Text style={styles.titel}>Fall in Love with Coffee in Blissful Delight!</Text>
-        <Text style={styles.subtitel}>Welcome to our cozy coffee corner, where every cup is a delightful for you.</Text>
-        <TouchableOpacity style={styles.button}>
+        <Text style={styles.titel}>
+          Fall in Love with Coffee in Blissful Delight!
+        </Text>
+        <Text style={styles.subtitel}>
+          Welcome to our cozy coffee corner, where every cup is a delightful for
+          you.
+        </Text>
+        <TouchableOpacity style={styles.button} onPress={() => { router.push('/(tabs)/home') }}>
           <Text style={styles.buttonTitel}>Get Started</Text>
         </TouchableOpacity>
       </View>
     </View>
-  )
-}
-
-export default index
+  );
+};
 
 const styles = StyleSheet.create({
-  HomeScreen:
-  {
+  HomeScreen: {
     flex: 1,
-    backgroundColor: '#050505',
+    backgroundColor: "#050505",
 
-    alignItems: 'center',
+    alignItems: "center",
   },
   img: {
     flex: 1,
   },
-  textArea:
-  {
-    alignItems: 'center',
+  textArea: {
+    alignItems: "center",
     flex: 1,
-    justifyContent: "space-evenly"
+    justifyContent: "space-evenly",
   },
-  titel:
-  {
+  titel: {
     color: "#FFFFFF",
     fontSize: responsiveFontSize(5),
-    textAlign: 'center',
-    fontWeight: '600',
+    textAlign: "center",
+    fontWeight: "600",
   },
-  subtitel:
-  {
+  subtitel: {
     marginHorizontal: responsiveScreenWidth(10),
     color: "#A2A2A2",
     fontSize: responsiveFontSize(2),
-    textAlign: 'center',
-    fontWeight: '400',
+    textAlign: "center",
+    fontWeight: "400",
   },
-  button:
-  {
+  button: {
     width: responsiveScreenWidth(90),
     height: responsiveScreenHeight(7),
-    backgroundColor: '#C67C4E',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "#C67C4E",
+    alignItems: "center",
+    justifyContent: "center",
     borderRadius: responsiveScreenWidth(4),
-
   },
-  buttonTitel:
-  {
-    fontSize: responsiveFontSize(2),
-    color: '#FFFFFF',
-    fontWeight: '600'
-  }
-})
+  buttonTitel: {
+    fontSize: responsiveFontSize(2.1),
+    color: "#FFFFFF",
+    fontWeight: "500",
+  },
+});
+export default index;

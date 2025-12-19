@@ -2,13 +2,13 @@ import { Ionicons } from "@expo/vector-icons";
 import React, { useState } from "react";
 import {
   Image,
+  ScrollView,
   StatusBar,
   StyleSheet,
   Text,
   TextInput,
-  ScrollView,
-  View,
   TouchableOpacity,
+  View,
 } from "react-native";
 import { Dropdown } from "react-native-element-dropdown";
 import {

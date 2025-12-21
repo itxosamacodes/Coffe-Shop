@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
 import React, { useState } from "react";
 import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import {
@@ -9,7 +10,7 @@ import {
 
 const Detail = () => {
   const [button, setButton] = useState("M");
-  const [price, setPrice] = useState("");
+  const [price, setPrice] = useState("4.48");
   const imgs = [
     { img: require("../../assets/detailsImg/img1.png") },
     { img: require("../../assets/detailsImg/img2.png") },
@@ -33,7 +34,13 @@ const Detail = () => {
     <View style={styles.Container}>
       {/* Header  */}
       <View style={styles.header}>
-        <Ionicons name="chevron-back" size={32} color={"black"} />
+        <TouchableOpacity
+          onPress={() => {
+            router.back();
+          }}
+        >
+          <Ionicons name="chevron-back" size={32} color={"black"} />
+        </TouchableOpacity>
         <Text style={styles.headerTitel}>Detail</Text>
         <Ionicons name="heart-outline" size={32} color={"black"} />
       </View>
@@ -158,12 +165,13 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingTop: responsiveHeight(6.5),
     alignItems: "center",
-    paddingHorizontal: responsiveWidth(10),
+    paddingHorizontal: responsiveWidth(5),
   },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
-    width: responsiveWidth(90),
+    width: "100%",
+    marginBottom: responsiveHeight(2),
   },
   headerTitel: {
     fontSize: responsiveFontSize(2.2),
@@ -171,20 +179,21 @@ const styles = StyleSheet.create({
   },
   img: {
     alignItems: "center",
-    paddingVertical: responsiveHeight(4),
+    paddingVertical: responsiveHeight(2),
   },
   // Cofee deatils start here
   CoffeContainer: {
-    alignItems: "center",
-    height: responsiveHeight(16),
+    width: "100%",
+    marginBottom: responsiveHeight(2),
   },
   CoffeeDetails: {
     flexDirection: "row",
     justifyContent: "space-between",
+    alignItems: "center",
   },
   leftsidethings: {
-    height: responsiveHeight(12),
-    justifyContent: "space-between",
+    justifyContent: "center",
+    gap: 5,
   },
   coffeetitel: {
     fontSize: responsiveFontSize(3),
@@ -199,6 +208,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
+    marginTop: 5,
   },
   star: {
     alignItems: "flex-start",
@@ -219,7 +229,7 @@ const styles = StyleSheet.create({
   rightSide: {
     alignItems: "center",
     flexDirection: "row",
-    gap: 20,
+    gap: 10,
   },
   imgBox: {
     height: responsiveHeight(6),
@@ -231,7 +241,8 @@ const styles = StyleSheet.create({
   },
   // Description Box design start here
   descriptionBox: {
-    height: 130,
+    width: "100%",
+    marginVertical: responsiveHeight(2),
   },
   desTitel: {
     fontSize: responsiveFontSize(2.5),
@@ -241,15 +252,17 @@ const styles = StyleSheet.create({
   description: {
     fontSize: responsiveFontSize(2),
     color: "#A2A2A2",
+    lineHeight: responsiveFontSize(2.8),
   },
   sizeBox: {
-    height: 120,
-    width: responsiveWidth(80),
-    justifyContent: "space-around",
+    width: "100%",
+    marginTop: responsiveHeight(1),
+    marginBottom: responsiveHeight(12),
   },
   sizetitel: {
     fontSize: responsiveFontSize(2.5),
     fontWeight: "600",
+    marginBottom: 15,
   },
   buttonRow: {
     flexDirection: "row",
@@ -257,12 +270,12 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   buttonBox: {
-    top: 10,
     borderRadius: 8,
     borderColor: "grey",
     borderWidth: 1.5,
-    paddingVertical: 13,
-    paddingHorizontal: 43,
+    paddingVertical: 10,
+    width: responsiveWidth(28),
+    alignItems: "center",
     backgroundColor: "#FFFFFF",
   },
   activeButton: {
@@ -273,21 +286,20 @@ const styles = StyleSheet.create({
   bottom: {
     position: "absolute",
     backgroundColor: "#F9F9F9",
-    height: 100,
-    width: responsiveWidth(100),
-    borderRadius: 20,
+    height: responsiveHeight(12),
+    width: "110%",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
     alignItems: "center",
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingBottom: 10,
+    paddingHorizontal: responsiveWidth(8),
     bottom: 0,
-    left: 0,
-    right: 0,
   },
   priceCol: {
-    left: 30,
     alignItems: "flex-start",
-    justifyContent: "space-between",
+    justifyContent: "center",
+    gap: 5,
   },
   Ptitel: {
     fontSize: responsiveFontSize(2.5),
@@ -299,10 +311,10 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   btn: {
-    right: 30,
-    paddingHorizontal: 68,
     backgroundColor: "#C67C4E",
-    paddingVertical: 24,
-    borderRadius: 10,
+    paddingVertical: 20,
+    paddingHorizontal: 40,
+    borderRadius: 16,
+    elevation: 10,
   },
 });

@@ -85,9 +85,9 @@ const Detail = () => {
         <View
           style={{
             top: 22,
-            height: 1.2,
+            height: 0.8,
             backgroundColor: "grey",
-            width: responsiveWidth(75),
+            width: "100%",
           }}
         />
       </View>
@@ -272,7 +272,7 @@ const styles = StyleSheet.create({
   buttonBox: {
     borderRadius: 8,
     borderColor: "grey",
-    borderWidth: 1.5,
+    borderWidth: 1,
     paddingVertical: 10,
     width: responsiveWidth(28),
     alignItems: "center",
@@ -286,7 +286,7 @@ const styles = StyleSheet.create({
   bottom: {
     position: "absolute",
     backgroundColor: "#F9F9F9",
-    height: responsiveHeight(12),
+    height: responsiveHeight(11),
     width: "110%",
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,

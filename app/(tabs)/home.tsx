@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
 import React, { useState } from "react";
 import {
   Image,
@@ -160,7 +161,7 @@ const Home = () => {
           ))}
         </ScrollView>
 
-        {/* Coffee menu */}
+        {/* Cofe menu */}
         <View style={styles.listContainer}>
           {selectedCategory === "All Coffee" ? (
             <View style={styles.gridContainer}>
@@ -177,7 +178,12 @@ const Home = () => {
                     <Text style={styles.currency}>
                       $ <Text style={styles.price}>{item.price}</Text>
                     </Text>
-                    <TouchableOpacity style={styles.addBtn}>
+                    <TouchableOpacity
+                      style={styles.addBtn}
+                      onPress={() => {
+                        router.push("/(tabs)/detail");
+                      }}
+                    >
                       <Ionicons name="add" size={16} color="white" />
                     </TouchableOpacity>
                   </View>

@@ -1,7 +1,14 @@
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React, { useState } from "react";
-import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import {
+  Image,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import {
   responsiveFontSize,
   responsiveHeight,
@@ -44,96 +51,101 @@ const Detail = () => {
         <Text style={styles.headerTitel}>Detail</Text>
         <Ionicons name="heart-outline" size={32} color={"black"} />
       </View>
-      {/* Image  */}
-      <View style={styles.img}>
-        <Image
-          source={require("../../assets/AppImg/coffee1.png")}
-          style={{
-            borderRadius: 15,
-            resizeMode: "cover",
-            height: responsiveHeight(23),
-            width: responsiveWidth(87),
-          }}
-        />
-      </View>
-      <View style={styles.CoffeContainer}>
-        <View style={styles.CoffeeDetails}>
-          {/* left side things */}
-          <View style={styles.leftsidethings}>
-            <Text style={styles.coffeetitel}>Caffe Mocha</Text>
-            <Text style={styles.subTitel}>Ice/Hot</Text>
-            <View style={styles.ratingRow}>
-              <View style={styles.star}>
-                <Image
-                  source={require("../../assets/detailsImg/star.png")}
-                  style={{ height: 28, width: 28 }}
-                />
+      <ScrollView>
+        {/* Image  */}
+        <View style={styles.img}>
+          <Image
+            source={require("../../assets/AppImg/coffee1.png")}
+            style={{
+              borderRadius: 15,
+              resizeMode: "cover",
+              height: responsiveHeight(23),
+              width: responsiveWidth(87),
+            }}
+          />
+        </View>
+        <View style={styles.CoffeContainer}>
+          <View style={styles.CoffeeDetails}>
+            {/* left side things */}
+            <View style={styles.leftsidethings}>
+              <Text style={styles.coffeetitel}>Caffe Mocha</Text>
+              <Text style={styles.subTitel}>Ice/Hot</Text>
+              <View style={styles.ratingRow}>
+                <View style={styles.star}>
+                  <Image
+                    source={require("../../assets/detailsImg/star.png")}
+                    style={{ height: 28, width: 28 }}
+                  />
+                </View>
+                <Text style={styles.rating}>4.8</Text>
+                <Text style={styles.ratingSubTitel}>(230)</Text>
               </View>
-              <Text style={styles.rating}>4.8</Text>
-              <Text style={styles.ratingSubTitel}>(230)</Text>
+            </View>
+            {/* right side */}
+            <View style={styles.rightSide}>
+              {imgs.map((item, index) => (
+                <View key={index} style={styles.imgBox}>
+                  <Image source={item.img} />
+                </View>
+              ))}
             </View>
           </View>
-          {/* right side */}
-          <View style={styles.rightSide}>
-            {imgs.map((item, index) => (
-              <View key={index} style={styles.imgBox}>
-                <Image source={item.img} />
-              </View>
+          <View
+            style={{
+              top: 22,
+              height: 0.8,
+              backgroundColor: "grey",
+              width: "100%",
+            }}
+          />
+        </View>
+        {/* Description start here */}
+        <View style={styles.descriptionBox}>
+          <Text style={styles.desTitel}>Description</Text>
+          <Text style={styles.description}>
+            A cappuccino is an approximately 150 ml (5 oz) beverage, with 25 ml
+            of espresso coffee and 85ml of fresh milk the fo...
+            <TouchableOpacity>
+              <Text
+                style={{
+                  color: "#C67C4E",
+                  fontWeight: "600",
+                  fontSize: responsiveFontSize(2),
+                }}
+              >
+                Read More
+              </Text>
+            </TouchableOpacity>
+          </Text>
+        </View>
+        <View style={styles.sizeBox}>
+          <Text style={styles.sizetitel}>Size</Text>
+          <View style={styles.buttonRow}>
+            {Size.map((item, index) => (
+              <TouchableOpacity
+                key={index}
+                style={[
+                  styles.buttonBox,
+                  button === item.size && styles.activeButton,
+                ]}
+                onPress={() => {
+                  setButton(item.size);
+                  setPrice(item.Price);
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: responsiveFontSize(2.5),
+                    fontWeight: "500",
+                  }}
+                >
+                  {item.size}
+                </Text>
+              </TouchableOpacity>
             ))}
           </View>
         </View>
-        <View
-          style={{
-            top: 22,
-            height: 0.8,
-            backgroundColor: "grey",
-            width: "100%",
-          }}
-        />
-      </View>
-      {/* Description start here */}
-      <View style={styles.descriptionBox}>
-        <Text style={styles.desTitel}>Description</Text>
-        <Text style={styles.description}>
-          A cappuccino is an approximately 150 ml (5 oz) beverage, with 25 ml of
-          espresso coffee and 85ml of fresh milk the fo...
-          <TouchableOpacity>
-            <Text
-              style={{
-                color: "#C67C4E",
-                fontWeight: "600",
-                fontSize: responsiveFontSize(2),
-              }}
-            >
-              Read More
-            </Text>
-          </TouchableOpacity>
-        </Text>
-      </View>
-      <View style={styles.sizeBox}>
-        <Text style={styles.sizetitel}>Size</Text>
-        <View style={styles.buttonRow}>
-          {Size.map((item, index) => (
-            <TouchableOpacity
-              key={index}
-              style={[
-                styles.buttonBox,
-                button === item.size && styles.activeButton,
-              ]}
-              onPress={() => {
-                setButton(item.size);
-                setPrice(item.Price);
-              }}
-            >
-              <Text
-                style={{ fontSize: responsiveFontSize(2.5), fontWeight: "500" }}
-              >
-                {item.size}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </View>
+      </ScrollView>
       {/* Bottom Button */}
       <View style={styles.bottom}>
         <View style={styles.priceCol}>
@@ -141,7 +153,12 @@ const Detail = () => {
           <Text style={styles.Price}>${price}</Text>
         </View>
         <View></View>
-        <TouchableOpacity style={styles.btn}>
+        <TouchableOpacity
+          style={styles.btn}
+          onPress={() => {
+            router.push("/(tabs)/order");
+          }}
+        >
           <Text
             style={{
               fontSize: responsiveFontSize(2.7),
@@ -161,7 +178,7 @@ export default Detail;
 
 const styles = StyleSheet.create({
   Container: {
-    backgroundColor: "#E3E3E3",
+    backgroundColor: "#F9F9F9",
     flex: 1,
     paddingTop: responsiveHeight(6.5),
     alignItems: "center",
@@ -262,7 +279,7 @@ const styles = StyleSheet.create({
   sizetitel: {
     fontSize: responsiveFontSize(2.5),
     fontWeight: "600",
-    marginBottom: 15,
+    marginBottom: 35,
   },
   buttonRow: {
     flexDirection: "row",
@@ -270,13 +287,13 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   buttonBox: {
-    borderRadius: 8,
+    borderRadius: 20,
     borderColor: "grey",
     borderWidth: 1,
     paddingVertical: 10,
     width: responsiveWidth(28),
     alignItems: "center",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "white",
   },
   activeButton: {
     backgroundColor: "#F9F2ED",
@@ -295,6 +312,11 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: responsiveWidth(8),
     bottom: 0,
+    elevation: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
   },
   priceCol: {
     alignItems: "flex-start",

@@ -24,6 +24,16 @@ const Home = () => {
     { label: "Islamabad, Pakistan", value: "islamabad" },
     { label: "Peshawar, Pakistan", value: "peshawar" },
   ];
+  const BuyHandler = (item: any) => {
+    router.push({
+      params: {
+        coffeImg: item.image,
+        coffeName: item.name,
+        coffePrice: item.price,
+      },
+      pathname: "/(tabs)/detail",
+    });
+  };
   const [selectedCategory, setSelectedCategory] = useState("All Coffee");
 
   const categories = ["All Coffee", "Machiato", "Latte", "American"];
@@ -31,108 +41,139 @@ const Home = () => {
 
   const coffeeData = [
     {
-      name: "Caffe Mocha",
+      name: "Espresso",
       subTitle: "Deep Foam",
       price: "4.53",
       rating: 4.8,
-      image: require("../../assets/AppImg/coffee2.png"),
+      image: require("../../assets/ProductImage/cofe3.jpg"),
+    },
+    {
+      name: "Cappuccino",
+      subTitle: "Espresso",
+      price: "3.73",
+      rating: 4.5,
+      image: require("../../assets/ProductImage/cofe4.jpg"),
+    },
+    {
+      name: "Latte",
+      subTitle: "Deep Foam",
+      price: "5.53",
+      rating: 3.8,
+      image: require("../../assets/ProductImage/cofe1.png"),
+    },
+    {
+      name: "Americano",
+      subTitle: "Espresso",
+      price: "3.21",
+      rating: 4.1,
+      image: require("../../assets/ProductImage/cofe2.png"),
+    },
+    {
+      name: "Mocha",
+      subTitle: "Deep Foam",
+      price: "5.23",
+      rating: 4.8,
+      image: require("../../assets/ProductImage/cofe5.jpg"),
     },
     {
       name: "Flat White",
       subTitle: "Espresso",
-      price: "3.53",
-      rating: 4.5,
-      image: require("../../assets/AppImg/coffee1.png"),
+      price: "6.73",
+      rating: 3.2,
+      image: require("../../assets/ProductImage/cofe6.jpg"),
     },
     {
-      name: "Caffe Mocha",
-      subTitle: "Deep Foam",
-      price: "4.53",
-      rating: 4.8,
-      image: require("../../assets/AppImg/coffee2.png"),
-    },
-    {
-      name: "Flat White",
+      name: "Macchiato",
       subTitle: "Espresso",
-      price: "3.53",
-      rating: 4.5,
-      image: require("../../assets/AppImg/coffee1.png"),
+      price: "3.95",
+      image: require("../../assets/ProductImage/cofe7.jpg"),
+    },
+    {
+      name: "Cold Brew",
+      subTitle: "Smooth",
+      price: "4.25",
+      image: require("../../assets/ProductImage/cofe8.jpg"),
+    },
+    {
+      name: "Affogato",
+      subTitle: "Vanilla",
+      price: "4.75",
+      image: require("../../assets/ProductImage/cofe9.jpg"),
     },
   ];
 
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#131313" />
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 20 }}
-        style={{ flex: 1 }}
-      >
-        {/* Header start */}
-        <View style={styles.header}>
-          <View style={styles.headerContent}>
-            <View style={styles.form}>
-              <Text style={styles.title}>Location</Text>
-              <View style={styles.dropContainer}>
-                <Dropdown
-                  data={data}
-                  labelField="label"
-                  valueField="value"
-                  value={value}
-                  onChange={(item) => setValue(item.value)}
-                  selectedTextStyle={{
-                    color: "#D8D8D8",
-                    fontWeight: "600",
-                    fontSize: responsiveFontSize(2),
-                  }}
-                  renderRightIcon={() => (
-                    <Ionicons
-                      style={styles.dropdownIcon}
-                      color="white"
-                      name="chevron-down"
-                      size={20}
-                    />
-                  )}
-                />
-              </View>
-              {/* Search Row */}
-              <View style={styles.searchRow}>
-                <View style={styles.searchBar}>
+
+      {/* Header start */}
+      <View style={styles.header}>
+        <View style={styles.headerContent}>
+          <View style={styles.form}>
+            <Text style={styles.title}>Location</Text>
+            <View style={styles.dropContainer}>
+              <Dropdown
+                data={data}
+                labelField="label"
+                valueField="value"
+                value={value}
+                onChange={(item) => setValue(item.value)}
+                selectedTextStyle={{
+                  color: "#D8D8D8",
+                  fontWeight: "600",
+                  fontSize: responsiveFontSize(2),
+                }}
+                renderRightIcon={() => (
                   <Ionicons
-                    name="search-outline"
-                    size={responsiveFontSize(2.5)}
-                    color="#FFFFFF"
-                    style={{ marginLeft: 15 }}
+                    style={styles.dropdownIcon}
+                    color="white"
+                    name="chevron-down"
+                    size={20}
                   />
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Search coffee"
-                    placeholderTextColor="#989898"
-                  />
-                  <View style={styles.filterBtn}>
-                    <Image source={require("../../assets/AppImg/filter.png")} />
-                  </View>
+                )}
+              />
+            </View>
+            {/* Search Row */}
+            <View style={styles.searchRow}>
+              <View style={styles.searchBar}>
+                <Ionicons
+                  name="search-outline"
+                  size={responsiveFontSize(2.5)}
+                  color="#FFFFFF"
+                  style={{ marginLeft: 15 }}
+                />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Search coffee"
+                  placeholderTextColor="#989898"
+                />
+                <View style={styles.filterBtn}>
+                  <Image source={require("../../assets/AppImg/filter.png")} />
                 </View>
               </View>
             </View>
           </View>
         </View>
+      </View>
 
-        {/* Banner start */}
-        <View style={styles.bannerContainer}>
-          <Image
-            source={require("../../assets/AppImg/Banner.png")}
-            style={styles.banner}
-            resizeMode="cover"
-          />
-          <View style={styles.bannerTextContainer}>
-            <Text style={styles.promoTag}>Promo</Text>
-            <View>
-              <Text style={styles.bannerTitle}>Buy one get one FREE</Text>
-            </View>
+      {/* Banner start */}
+      <View style={styles.bannerContainer}>
+        <Image
+          source={require("../../assets/AppImg/Banner.png")}
+          style={styles.banner}
+          resizeMode="cover"
+        />
+        <View style={styles.bannerTextContainer}>
+          <Text style={styles.promoTag}>Promo</Text>
+          <View>
+            <Text style={styles.bannerTitle}>Buy one get one FREE</Text>
           </View>
         </View>
-
+      </View>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 20 }}
+      >
         {/* Categories Menu */}
         <ScrollView
           horizontal
@@ -181,7 +222,7 @@ const Home = () => {
                     <TouchableOpacity
                       style={styles.addBtn}
                       onPress={() => {
-                        router.push("/(tabs)/detail");
+                        BuyHandler(item);
                       }}
                     >
                       <Ionicons name="add" size={16} color="white" />

@@ -96,7 +96,7 @@ const Order = () => {
         {/* Oder Item */}
         <View style={styles.itemContainer}>
           <Image
-            source={require("../../assets/AppImg/coffee2.png")}
+            source={require("../../assets/ProductImage/cofe1.png")}
             style={styles.itemImage}
           />
           <View style={styles.itemDetails}>

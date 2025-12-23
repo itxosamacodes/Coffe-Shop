@@ -21,7 +21,12 @@ const index = () => {
           Welcome to our cozy coffee corner, where every cup is a delightful for
           you.
         </Text>
-        <TouchableOpacity style={styles.button} onPress={() => { router.push('/(tabs)/home') }}>
+        <TouchableOpacity
+          style={styles.button}
+          onPress={() => {
+            router.push("/(tabs)/home");
+          }}
+        >
           <Text style={styles.buttonTitel}>Get Started</Text>
         </TouchableOpacity>
       </View>

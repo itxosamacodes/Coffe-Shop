@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import React, { useState } from "react";
 import {
   Image,
@@ -16,13 +16,15 @@ import {
 } from "react-native-responsive-dimensions";
 
 const Detail = () => {
+  const { coffeImg, coffeName, coffePrice } = useLocalSearchParams();
   const [button, setButton] = useState("M");
-  const [price, setPrice] = useState("4.48");
+  const [price, setPrice] = useState(coffePrice);
   const imgs = [
     { img: require("../../assets/detailsImg/img1.png") },
     { img: require("../../assets/detailsImg/img2.png") },
     { img: require("../../assets/detailsImg/img3.png") },
   ];
+
   const Size = [
     {
       size: "S",
@@ -55,7 +57,7 @@ const Detail = () => {
         {/* Image  */}
         <View style={styles.img}>
           <Image
-            source={require("../../assets/AppImg/coffee1.png")}
+            source={coffeImg}
             style={{
               borderRadius: 15,
               resizeMode: "cover",
@@ -68,7 +70,7 @@ const Detail = () => {
           <View style={styles.CoffeeDetails}>
             {/* left side things */}
             <View style={styles.leftsidethings}>
-              <Text style={styles.coffeetitel}>Caffe Mocha</Text>
+              <Text style={styles.coffeetitel}>{coffeName}</Text>
               <Text style={styles.subTitel}>Ice/Hot</Text>
               <View style={styles.ratingRow}>
                 <View style={styles.star}>

@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
+import { Asset } from "expo-asset";
 import { router } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Image,
   ScrollView,
@@ -19,6 +20,20 @@ import {
 } from "react-native-responsive-dimensions";
 
 const Home = () => {
+  useEffect(() => {
+    const preloadAssets = async () => {
+      const bannerImage = Asset.fromModule(
+        require("../../assets/AppImg/Banner.png")
+      );
+      await bannerImage.downloadAsync();
+      const coffeeImages = coffeeData.map((item) =>
+        Asset.fromModule(item.image)
+      );
+      await Promise.all(coffeeImages.map((img) => img.downloadAsync()));
+    };
+
+    preloadAssets();
+  }, []);
   const data = [
     { label: "Lahore, Pakistan", value: "lahore" },
     { label: "Islamabad, Pakistan", value: "islamabad" },
@@ -38,7 +53,6 @@ const Home = () => {
 
   const categories = ["All Coffee", "Machiato", "Latte", "American"];
   const [value, setValue] = useState("islamabad");
-
   const coffeeData = [
     {
       name: "Espresso",
@@ -239,6 +253,7 @@ const Home = () => {
             </View>
           )}
         </View>
+        <View style={{ height: 70, width: "100%", bottom: 100 }}></View>
       </ScrollView>
       {/* botom menu */}
       <View style={styles.bottomNav}>

@@ -1,14 +1,22 @@
+import MapboxGL from "@rnmapbox/maps";
 import React from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 
-const map = () => {
+MapboxGL.setAccessToken(
+  "pk.eyJ1Ijoic2hvYWliMjciLCJhIjoiY21qaDBqOXhyMTZtODNjcXpwdzk1a3U5MyJ9.nX11n_uZd8pgvX9PC3IDgA"
+);
+
+export default function MapScreen() {
   return (
-    <View>
-      <Text>map</Text>
+    <View style={styles.container}>
+      <MapboxGL.MapView style={styles.map}>
+        <MapboxGL.Camera zoomLevel={12} centerCoordinate={[67.0011, 24.8607]} />
+      </MapboxGL.MapView>
     </View>
   );
-};
+}
 
-export default map;
-
-const styles = StyleSheet.create({});
+const styles = StyleSheet.create({
+  container: { flex: 1 },
+  map: { flex: 1 },
+});

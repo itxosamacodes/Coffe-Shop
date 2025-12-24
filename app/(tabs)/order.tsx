@@ -168,7 +168,12 @@ const Order = () => {
           </View>
           <Ionicons name="chevron-down" size={20} color="black" />
         </View>
-        <TouchableOpacity style={styles.orderButton}>
+        <TouchableOpacity
+          style={styles.orderButton}
+          onPress={() => {
+            router.push("/(tabs)/map");
+          }}
+        >
           <Text style={styles.orderButtonText}>Order</Text>
         </TouchableOpacity>
       </View>

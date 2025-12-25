@@ -154,7 +154,7 @@ const Order = () => {
       <View style={styles.bottomBar}>
         <View style={styles.walletSection}>
           <View style={styles.walletLeftSection}>
-            {" "}
+            <Text>{"  "}</Text>
             <Ionicons
               name="wallet-outline"
               size={24}

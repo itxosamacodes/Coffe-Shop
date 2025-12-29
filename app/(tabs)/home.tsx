@@ -1,8 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
-import { Asset } from "expo-asset";
 import { router } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
+  FlatList,
   Image,
   ScrollView,
   StatusBar,
@@ -20,20 +20,6 @@ import {
 } from "react-native-responsive-dimensions";
 
 const Home = () => {
-  useEffect(() => {
-    const preloadAssets = async () => {
-      const bannerImage = Asset.fromModule(
-        require("../../assets/AppImg/Banner.png")
-      );
-      await bannerImage.downloadAsync();
-      const coffeeImages = coffeeData.map((item) =>
-        Asset.fromModule(item.image)
-      );
-      await Promise.all(coffeeImages.map((img) => img.downloadAsync()));
-    };
-
-    preloadAssets();
-  }, []);
   const data = [
     { label: "Lahore, Pakistan", value: "lahore" },
     { label: "Islamabad, Pakistan", value: "islamabad" },
@@ -115,6 +101,10 @@ const Home = () => {
       image: require("../../assets/ProductImage/cofe9.jpg"),
     },
   ];
+  const [Arraydata, setArrayData] = useState<any[]>([]);
+  useEffect(() => {
+    setArrayData(coffeeData);
+  }, []);
 
   return (
     <View style={styles.container}>
@@ -220,7 +210,7 @@ const Home = () => {
         <View style={styles.listContainer}>
           {selectedCategory === "All Coffee" ? (
             <View style={styles.gridContainer}>
-              {coffeeData.map((item, index) => (
+              {Arraydata.map((item, index) => (
                 <View key={index} style={styles.card}>
                   <View style={styles.ratingBox}>
                     <Ionicons name="star" color="#D17842" size={12} />

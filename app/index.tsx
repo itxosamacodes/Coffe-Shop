@@ -24,7 +24,7 @@ const index = () => {
         <TouchableOpacity
           style={styles.button}
           onPress={() => {
-            router.push("/(tabs)/home");
+            router.push("/(auth)/signIn");
           }}
         >
           <Text style={styles.buttonTitel}>Get Started</Text>

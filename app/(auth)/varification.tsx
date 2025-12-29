@@ -1,7 +1,9 @@
+import { supabase } from "@/utils/supabse";
 import { MaterialIcons } from "@expo/vector-icons";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import React, { useState } from "react";
 import {
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -13,7 +15,47 @@ import {
 } from "react-native";
 
 export default function CoffeeSignUpScreen() {
+  const [Loading, setLoading] = useState(false);
+  const [ErrorMsg, setErrorMsg] = useState("");
   const [otp, setOtp] = useState("");
+  const { email, mode } = useLocalSearchParams();
+  const VarifyHandler = async () => {
+    setErrorMsg("");
+    if (!otp) {
+      setErrorMsg("Enter OTP");
+      return;
+    }
+    if (otp.length > 6 || otp.length < 6) {
+      setErrorMsg("The OTP shuold be 6 digits");
+      return;
+    }
+    setLoading(true);
+    const { error } = await supabase.auth.verifyOtp({
+      email: email as string,
+      token: otp.trim(),
+      type: "email",
+    });
+    setLoading(false);
+    if (error) {
+      setErrorMsg(error.message);
+    } else {
+      if (mode === "signUp") {
+        router.push("/(tabs)/home");
+      } else {
+        router.push("/(auth)/setNewPass");
+      }
+    }
+  };
+  const resendOtp = async () => {
+    const { error } = await supabase.auth.signInWithOtp({
+      email: email as string,
+    });
+    if (!error) {
+      alert(`A new OTP has been sent to : ${email}`);
+    } else {
+      alert(error.message);
+    }
+  };
 
   return (
     <KeyboardAvoidingView
@@ -26,7 +68,6 @@ export default function CoffeeSignUpScreen() {
       >
         {/* Header */}
         <Text style={styles.title}>Verify Account</Text>
-
         {/* Email */}
         <View style={styles.inputContainer}>
           <View style={styles.inputWrapper}>
@@ -47,13 +88,23 @@ export default function CoffeeSignUpScreen() {
             />
           </View>
         </View>
+        <TouchableOpacity style={styles.ResendOpt} onPress={resendOtp}>
+          <Text style={styles.ResendOptText}>Resend</Text>
+        </TouchableOpacity>
+        {ErrorMsg ? <Text style={styles.error}>{ErrorMsg}</Text> : null}
+
         <TouchableOpacity
           style={styles.createButton}
           onPress={() => {
-            router.push("/(auth)/setNewPass");
+            VarifyHandler();
           }}
+          disabled={Loading}
         >
-          <Text style={styles.createButtonText}>Varify & Proced</Text>
+          {Loading ? (
+            <ActivityIndicator size={"small"} color={"white"} />
+          ) : (
+            <Text style={styles.createButtonText}>Varify & Proced</Text>
+          )}
         </TouchableOpacity>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -78,12 +129,16 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#2a2a2a",
     textAlign: "center",
-    marginVertical: 30,
-    marginBottom: 8,
+    marginBottom: 60,
+  },
+  error: {
+    color: "red",
+    paddingBottom: 16,
+    top: -16,
+    textAlign: "center",
   },
   inputContainer: {
-    marginVertical: 30,
-    marginBottom: 30,
+    marginBottom: 5,
   },
   inputWrapper: {
     flexDirection: "row",
@@ -97,6 +152,14 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 2,
     elevation: 1,
+  },
+  ResendOpt: {
+    alignSelf: "flex-end",
+    marginBottom: 34,
+  },
+  ResendOptText: {
+    color: "#C87941",
+    fontSize: 16,
   },
   inputIcon: {
     marginRight: 12,

@@ -1,7 +1,9 @@
+import { supabase } from "@/utils/supabse";
 import { MaterialIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React, { useState } from "react";
 import {
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -13,7 +15,32 @@ import {
 } from "react-native";
 
 export default function CoffeeSignUpScreen() {
-  const [otp, setOtp] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmpass, setConfirmPass] = useState("");
+  const [errorMsg, setErrorMsg] = useState("");
+  const [loading, setLoading] = useState(false);
+  const setupPassword = async () => {
+    setErrorMsg("");
+    if (!password || !confirmpass) {
+      setErrorMsg("Please enter your password.");
+      return;
+    }
+    if (password !== confirmpass) {
+      setErrorMsg("Passwords do not match.");
+      return;
+    }
+    setLoading(true);
+    const { error } = await supabase.auth.updateUser({
+      password: password,
+    });
+    setLoading(false);
+    if (error) {
+      setErrorMsg(error.message);
+      return;
+    } else {
+      router.replace("/(tabs)/home");
+    }
+  };
 
   return (
     <KeyboardAvoidingView
@@ -40,8 +67,8 @@ export default function CoffeeSignUpScreen() {
               style={styles.input}
               placeholder="Password"
               placeholderTextColor="#999"
-              value={otp}
-              onChangeText={setOtp}
+              value={password}
+              onChangeText={setPassword}
               keyboardType="default"
               autoCapitalize="none"
             />
@@ -59,18 +86,28 @@ export default function CoffeeSignUpScreen() {
               style={styles.input}
               placeholder="Confirm Password"
               placeholderTextColor="#999"
-              value={otp}
-              onChangeText={setOtp}
+              value={confirmpass}
+              onChangeText={setConfirmPass}
               keyboardType="default"
               autoCapitalize="none"
             />
           </View>
         </View>
+        {errorMsg ? <Text style={styles.error}>{errorMsg}</Text> : null}
+
         <TouchableOpacity
           style={styles.createButton}
-          onPress={() => router.push("/(auth)/setNewPass")}
+          onPress={() => {
+            setupPassword();
+          }}
         >
-          <Text style={styles.createButtonText}>Set Password</Text>
+          <Text style={styles.createButtonText}>
+            {loading ? (
+              <ActivityIndicator size={"small"} color={"white"} />
+            ) : (
+              "Set New Password"
+            )}
+          </Text>
         </TouchableOpacity>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -112,6 +149,12 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 2,
     elevation: 1,
+  },
+  error: {
+    color: "red",
+    paddingBottom: 16,
+    top: -10,
+    textAlign: "center",
   },
   inputIcon: {
     marginRight: 12,

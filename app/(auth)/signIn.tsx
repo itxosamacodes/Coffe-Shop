@@ -1,7 +1,9 @@
+import { supabase } from "@/utils/supabse";
 import { Feather, Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React, { useState } from "react";
 import {
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -16,9 +18,27 @@ export default function CoffeeLoginScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [Loading, setLoading] = useState(false);
+  const [ErrorMsg, setErrorMsg] = useState("");
 
-  const handleLogin = () => {
-    console.log("Login pressed", { email, password });
+  const SignUpHandler = async () => {
+    setErrorMsg("");
+    if (!email || !password) {
+      setErrorMsg("Please fill all the fildes");
+      return;
+    }
+
+    setLoading(true);
+    const { error } = await supabase.auth.signInWithPassword({
+      email: email,
+      password: password,
+    });
+    setLoading(false);
+    if (error) {
+      setErrorMsg(error.message);
+    } else {
+      router.replace("/(auth)/varification");
+    }
   };
 
   return (
@@ -101,10 +121,21 @@ export default function CoffeeLoginScreen() {
         >
           <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
         </TouchableOpacity>
+        {ErrorMsg ? <Text style={styles.error}>{ErrorMsg}</Text> : null}
 
         {/* Login Button */}
-        <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
-          <Text style={styles.loginButtonText}>Login</Text>
+        <TouchableOpacity
+          style={styles.loginButton}
+          onPress={SignUpHandler}
+          disabled={Loading}
+        >
+          <Text style={styles.loginButtonText}>
+            {Loading ? (
+              <ActivityIndicator size={"small"} color={"white"} />
+            ) : (
+              "Login"
+            )}
+          </Text>
         </TouchableOpacity>
 
         {/* signIn with Google */}
@@ -193,6 +224,12 @@ const styles = StyleSheet.create({
   },
   eyeIcon: {
     padding: 4,
+  },
+  error: {
+    color: "red",
+    paddingBottom: 16,
+    top: -16,
+    textAlign: "center",
   },
   forgotPassword: {
     alignSelf: "flex-end",

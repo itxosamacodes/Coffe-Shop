@@ -1,7 +1,9 @@
+import { supabase } from "@/utils/supabse";
 import { MaterialIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React, { useState } from "react";
 import {
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -14,6 +16,38 @@ import {
 
 export default function CoffeeSignUpScreen() {
   const [email, setEmail] = useState("");
+  const [errorMsg, setErrorMsg] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const forgethandler = async () => {
+    setErrorMsg("");
+
+    if (!email.trim()) {
+      setErrorMsg("Please enter your email address");
+      return;
+    }
+
+    setLoading(true);
+
+    const { error } = await supabase.auth.signInWithOtp({
+      email: email.trim().toLowerCase(),
+      options: {
+        shouldCreateUser: false,
+      },
+    });
+
+    setLoading(false);
+
+    if (error) {
+      setErrorMsg("No account found with this email.");
+      return;
+    }
+
+    router.push({
+      pathname: "/(auth)/varification",
+      params: { email: email.trim().toLowerCase(), mode: "reset" },
+    });
+  };
 
   return (
     <KeyboardAvoidingView
@@ -51,14 +85,21 @@ export default function CoffeeSignUpScreen() {
             />
           </View>
         </View>
+        {errorMsg ? <Text style={styles.error}>{errorMsg}</Text> : null}
+
         <TouchableOpacity
           style={styles.createButton}
-          onPress={() => router.push("/(auth)/varification")}
+          onPress={forgethandler}
+          disabled={loading}
         >
-          <Text style={styles.createButtonText}>Send OTP</Text>
+          <Text style={styles.createButtonText}>
+            {loading ? (
+              <ActivityIndicator size={"small"} color={"white"} />
+            ) : (
+              "Send OTP"
+            )}
+          </Text>
         </TouchableOpacity>
-
-        {/* Login button*/}
         <View style={styles.loginContainer}>
           <Text style={styles.loginText}>Remember password? </Text>
           <TouchableOpacity onPress={() => router.push("/(auth)/signIn")}>
@@ -120,6 +161,12 @@ const styles = StyleSheet.create({
     flex: 1,
     color: "#2a2a2a",
     fontSize: 15,
+  },
+  error: {
+    color: "red",
+    paddingBottom: 16,
+    top: -12,
+    textAlign: "center",
   },
   createButton: {
     backgroundColor: "#C87941",

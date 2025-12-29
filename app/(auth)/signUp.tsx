@@ -2,6 +2,7 @@ import { Feather, Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React, { useState } from "react";
 import {
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -11,20 +12,62 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { supabase } from "../../utils/supabse";
 
 export default function CoffeeSignUpScreen() {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [Conpassword, setConPassword] = useState("");
+  const [Loading, setLoading] = useState(false);
+  const [ErrorMsg, setErrorMsg] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
 
-  const handleCreateAccount = () => {
+  const SignUpHandler = async () => {
     if (!agreedToTerms) {
       alert("Please agree to the Terms of Service and Privacy Policy");
       return;
     }
-    console.log("Create account pressed", { fullName, email, password });
+    if (password !== Conpassword) {
+      setErrorMsg("Confirma Password does not match.");
+      return;
+    }
+    setErrorMsg("");
+    setLoading(true);
+    const { error, data } = await supabase.auth.signUp({
+      email: email,
+      password: password,
+      options: {
+        data: {
+          FullName: fullName,
+        },
+      },
+    });
+
+    if (!data.user) {
+      setErrorMsg("Signup failed. Please try again.");
+      return;
+    }
+
+    if (data.user.identities?.length === 0) {
+      setErrorMsg("This email is already registered. Please sign in.");
+      return;
+    }
+
+    if (data.user.email_confirmed_at) {
+      setErrorMsg("Account already exists and is verified. Please sign in.");
+      return;
+    }
+    setLoading(false);
+    if (error) {
+      setErrorMsg(error.message);
+    } else {
+      router.push({
+        pathname: "/(auth)/varification",
+        params: { email, mode: "signUp" },
+      });
+    }
   };
   return (
     <KeyboardAvoidingView
@@ -46,7 +89,7 @@ export default function CoffeeSignUpScreen() {
         <Text style={styles.title}>Sign up</Text>
         <Text style={styles.subtitle}>Create an account to get started</Text>
 
-        {/* Full Name Input */}
+        {/*  Name */}
         <View style={styles.inputContainer}>
           <View style={styles.inputWrapper}>
             <Feather
@@ -66,7 +109,7 @@ export default function CoffeeSignUpScreen() {
           </View>
         </View>
 
-        {/* Email Input */}
+        {/* Email */}
         <View style={styles.inputContainer}>
           <View style={styles.inputWrapper}>
             <MaterialIcons
@@ -87,7 +130,7 @@ export default function CoffeeSignUpScreen() {
           </View>
         </View>
 
-        {/* Password Input */}
+        {/* Confirmed Password */}
         <View style={styles.inputContainer}>
           <View style={styles.inputWrapper}>
             <Feather
@@ -114,7 +157,39 @@ export default function CoffeeSignUpScreen() {
             </TouchableOpacity>
           </View>
         </View>
-
+        <View style={styles.inputContainer}>
+          <View style={styles.inputWrapper}>
+            <Feather
+              name="lock"
+              size={20}
+              color="#999"
+              style={styles.inputIcon}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder=" Confirm Password"
+              placeholderTextColor="#999"
+              value={Conpassword}
+              onChangeText={setConPassword}
+              secureTextEntry={!showPassword}
+            />
+            <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+              <Feather
+                name={showPassword ? "eye" : "eye-off"}
+                size={20}
+                color="#999"
+                style={styles.eyeIcon}
+              />
+            </TouchableOpacity>
+          </View>
+        </View>
+        {ErrorMsg ? (
+          <Text
+            style={{ color: "red", paddingVertical: 6, textAlign: "center" }}
+          >
+            {ErrorMsg}
+          </Text>
+        ) : null}
         {/* Terms and Conditions */}
         <View style={styles.termsContainer}>
           <TouchableOpacity
@@ -139,12 +214,15 @@ export default function CoffeeSignUpScreen() {
           </Text>
         </View>
 
-        {/* Create Account Button */}
+        {/* Create Account */}
         <TouchableOpacity
           style={styles.createButton}
-          onPress={handleCreateAccount}
+          onPress={SignUpHandler}
+          disabled={Loading}
         >
-          <Text style={styles.createButtonText}>Create Account</Text>
+          <Text style={styles.createButtonText}>
+            {Loading ? <ActivityIndicator size={"small"} /> : "Create Account"}
+          </Text>
         </TouchableOpacity>
 
         {/* Login Link */}

@@ -2,7 +2,6 @@ import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
-  FlatList,
   Image,
   ScrollView,
   StatusBar,
@@ -10,7 +9,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
 import { Dropdown } from "react-native-element-dropdown";
 import {
@@ -31,6 +30,7 @@ const Home = () => {
         coffeImg: item.image,
         coffeName: item.name,
         coffePrice: item.price,
+        location: value,
       },
       pathname: "/(tabs)/detail",
     });

@@ -22,8 +22,9 @@ const Checkout = () => {
     coffeImg?: string;
     coffeName?: string;
     coffePrice?: string;
+    location?: string;
   };
-  const { coffeImg, coffeName, coffePrice } = params;
+  const { coffeImg, coffeName, coffePrice, location } = params;
   const [deliveryType, setDeliveryType] = useState("Deliver");
   const [quantity, setQuantity] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -154,7 +155,7 @@ const Checkout = () => {
         {/* <Text style={styles.sectionTitle}>User Info</Text> */}
         <Text style={styles.addressTitle}>{userName}</Text>
         <Text style={styles.addressSubtitle}>
-          Pakistan Islamabad
+          Pakistan {location}
         </Text>
         <View style={styles.addressActions}>
           <TouchableOpacity style={styles.outlineButton}>

@@ -158,7 +158,7 @@ const Detail = () => {
         <TouchableOpacity
           style={styles.btn}
           onPress={() => {
-            router.push("/(tabs)/order");
+            router.push("/checkout");
           }}
         >
           <Text

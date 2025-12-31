@@ -29,10 +29,20 @@ const index = () => {
         >
           <Text style={styles.buttonTitel}>Get Started</Text>
         </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.button, { marginTop: 10, backgroundColor: "#333" }]}
+          onPress={() => {
+            router.push("/admin/dashboard");
+          }}
+        >
+          <Text style={styles.buttonTitel}>Admin Dashboard</Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
 };
+
 
 const styles = StyleSheet.create({
   HomeScreen: {

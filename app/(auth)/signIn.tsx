@@ -15,8 +15,8 @@ import {
 } from "react-native";
 
 export default function CoffeeLoginScreen() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState("itxosama.io@gmail.com");
+  const [password, setPassword] = useState("321321");
   const [showPassword, setShowPassword] = useState(false);
   const [Loading, setLoading] = useState(false);
   const [ErrorMsg, setErrorMsg] = useState("");
@@ -37,7 +37,7 @@ export default function CoffeeLoginScreen() {
     if (error) {
       setErrorMsg(error.message);
     } else {
-      router.replace("/(auth)/varification");
+      router.replace("/(tabs)/home");
     }
   };
 

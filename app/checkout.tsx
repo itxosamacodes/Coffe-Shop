@@ -1,6 +1,6 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import { router } from "expo-router";
-import React, { useState } from "react";
+import { router, useLocalSearchParams } from "expo-router";
+import React, { useEffect, useState } from "react";
 import {
   Image,
   ScrollView,
@@ -18,22 +18,64 @@ import {
 import { supabase } from "../utils/supabase";
 
 const Checkout = () => {
+  const params = useLocalSearchParams() as {
+    coffeImg?: string;
+    coffeName?: string;
+    coffePrice?: string;
+  };
+  const { coffeImg, coffeName, coffePrice } = params;
   const [deliveryType, setDeliveryType] = useState("Deliver");
   const [quantity, setQuantity] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [userName, setUserName] = useState("Loading...");
+
+  const basePrice = parseFloat(coffePrice as string) || 0;
+  const totalPrice = basePrice * quantity;
+  const deliveryFee = 1.0;
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (user) {
+          const { data, error } = await supabase
+            .from("profiles")
+            .select("full_name")
+            .eq("id", user.id)
+            .single();
+          if (data && data.full_name) {
+            setUserName(data.full_name);
+          } else {
+            setUserName(user.email?.split("@")[0] || "User");
+          }
+        }
+      } catch (err) {
+        console.error("Error fetching user:", err);
+        setUserName("User");
+      }
+    };
+    fetchUser();
+  }, []);
 
   const handleOrder = async () => {
     try {
       setLoading(true);
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
       const { data, error } = await supabase
         .from("orders")
         .insert([
           {
-            item_name: "Caffe Mocha", // Hardcoded for now as per UI
+            item_name: coffeName,
             quantity: quantity,
-            total_price: 4.53, // Hardcoded as per UI
+            total_price: totalPrice + deliveryFee,
             delivery_type: deliveryType,
             status: "pending",
+            user_id: user?.id,
           },
         ])
         .select();
@@ -109,10 +151,10 @@ const Checkout = () => {
         </View>
 
         {/* Delivery Adress */}
-        <Text style={styles.sectionTitle}>Delivery Address</Text>
-        <Text style={styles.addressTitle}>Jl. Kpg Sutoyo</Text>
+        {/* <Text style={styles.sectionTitle}>User Info</Text> */}
+        <Text style={styles.addressTitle}>{userName}</Text>
         <Text style={styles.addressSubtitle}>
-          Kpg. Sutoyo No. 620, Bilzen, Tanjungbalai.
+          Pakistan Islamabad
         </Text>
         <View style={styles.addressActions}>
           <TouchableOpacity style={styles.outlineButton}>
@@ -130,11 +172,17 @@ const Checkout = () => {
         {/* Oder Item */}
         <View style={styles.itemContainer}>
           <Image
-            source={require("../assets/ProductImage/cofe1.png")}
+            source={
+              typeof coffeImg === "string" && !isNaN(Number(coffeImg))
+                ? Number(coffeImg)
+                : typeof coffeImg === "string"
+                  ? { uri: coffeImg }
+                  : coffeImg
+            }
             style={styles.itemImage}
           />
           <View style={styles.itemDetails}>
-            <Text style={styles.itemName}>Caffe Mocha</Text>
+            <Text style={styles.itemName}>{coffeName}</Text>
             <Text style={styles.itemVariant}>Deep Foam</Text>
           </View>
           <View style={styles.quantityContainer}>
@@ -173,13 +221,13 @@ const Checkout = () => {
         <Text style={styles.sectionTitle}>Payment Summary</Text>
         <View style={styles.summaryRow}>
           <Text style={styles.summaryLabel}>Price</Text>
-          <Text style={styles.summaryValue}>$ 4.53</Text>
+          <Text style={styles.summaryValue}>$ {totalPrice.toFixed(2)}</Text>
         </View>
         <View style={styles.summaryRow}>
           <Text style={styles.summaryLabel}>Delivery Fee</Text>
           <View style={styles.deliveryFeeContainer}>
             <Text style={styles.strikethroughPrice}>$ 2.0</Text>
-            <Text style={styles.summaryValue}>$ 1.0</Text>
+            <Text style={styles.summaryValue}>$ {deliveryFee.toFixed(1)}</Text>
           </View>
         </View>
       </ScrollView>
@@ -196,8 +244,10 @@ const Checkout = () => {
               style={styles.walletIcon}
             />
             <View>
-              <Text style={styles.walletTitle}>Cash/Wallet</Text>
-              <Text style={styles.walletBalance}>$ 5.53</Text>
+              <Text style={styles.walletTitle}>Total Price</Text>
+              <Text style={styles.walletBalance}>
+                $ {(totalPrice + deliveryFee).toFixed(2)}
+              </Text>
             </View>
           </View>
           <Ionicons name="chevron-down" size={20} color="black" />

@@ -16,7 +16,11 @@ import {
 } from "react-native-responsive-dimensions";
 
 const Detail = () => {
-  const { coffeImg, coffeName, coffePrice } = useLocalSearchParams();
+  const { coffeImg, coffeName, coffePrice } = useLocalSearchParams() as {
+    coffeImg: any;
+    coffeName: string;
+    coffePrice: string;
+  };
   const [button, setButton] = useState("M");
   const [price, setPrice] = useState(coffePrice);
   const imgs = [
@@ -158,7 +162,10 @@ const Detail = () => {
         <TouchableOpacity
           style={styles.btn}
           onPress={() => {
-            router.push("/checkout");
+            router.push({
+              pathname: "/checkout",
+              params: { coffeImg, coffeName, coffePrice: price },
+            });
           }}
         >
           <Text

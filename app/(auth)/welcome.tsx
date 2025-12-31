@@ -12,7 +12,6 @@ import {
 const Welcome = () => {
   return (
     <View style={styles.container}>
-      {/* Decorative Background Elements */}
       <View style={styles.decorativeCircle1} />
       <View style={styles.decorativeCircle2} />
 

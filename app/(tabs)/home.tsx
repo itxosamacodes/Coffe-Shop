@@ -247,18 +247,18 @@ const Home = () => {
       </ScrollView>
       {/* botom menu */}
       <View style={styles.bottomNav}>
-        <TouchableOpacity style={styles.navItem}>
+        <TouchableOpacity style={styles.navItem} onPress={() => router.push("/(tabs)/home")}>
           <View style={styles.activeNavIcon}>
             <Ionicons name="home" size={24} color="#ffffff" />
           </View>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem}>
+        <TouchableOpacity style={styles.navItem} onPress={() => router.push("/(tabs)/favorites")}>
           <Ionicons name="heart-outline" size={24} color="#8D8D8D" />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem}>
+        <TouchableOpacity style={styles.navItem} onPress={() => router.push("/(tabs)/orders")}>
           <Ionicons name="bag-outline" size={24} color="#8D8D8D" />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem}>
+        <TouchableOpacity style={styles.navItem} onPress={() => router.push("/(tabs)/activity")}>
           <Ionicons name="notifications-outline" size={24} color="#8D8D8D" />
         </TouchableOpacity>
       </View>

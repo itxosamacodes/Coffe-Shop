@@ -1,0 +1,637 @@
+import { Ionicons } from "@expo/vector-icons";
+import {
+    getCurrentPositionAsync,
+    requestForegroundPermissionsAsync,
+    reverseGeocodeAsync
+} from "expo-location";
+import { router, useLocalSearchParams } from "expo-router";
+import React, { useCallback, useState } from "react";
+import {
+    ActivityIndicator,
+    Alert,
+    Image,
+    Modal,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
+} from "react-native";
+import {
+    responsiveHeight,
+    responsiveWidth
+} from "react-native-responsive-dimensions";
+import { supabase } from "../../utils/supabase";
+
+const Checkout = () => {
+    const params = useLocalSearchParams();
+
+    // Safely extract params
+    const coffeImg = params.coffeImg;
+    const coffeName = (params.coffeName as string) || "Coffee";
+    const coffePriceRaw = (params.coffePrice as string) || "0.00";
+    const initialLocation = (params.location as string) || "";
+
+    const [modalVisible, setModalVisible] = useState(false);
+    const [loading, setLoading] = useState(false);
+    const [locationLoading, setLocationLoading] = useState(false);
+    const [quantity, setQuantity] = useState(1);
+    const [userInfo, setUserInfo] = useState({
+        name: "",
+        email: "",
+        address: initialLocation,
+        phone: "",
+    });
+
+    const parsedPrice = parseFloat(coffePriceRaw) || 0;
+
+    const getCurrentLocation = useCallback(async () => {
+        setLocationLoading(true);
+        console.log("[DEBUG] Starting location fetch process...");
+        try {
+            console.log("[DEBUG] Requesting foreground permissions...");
+            const { status } = await requestForegroundPermissionsAsync();
+            console.log("[DEBUG] Permission result:", status);
+
+            if (status !== "granted") {
+                Alert.alert("Permission denied", "Allow location access to use this feature");
+                return;
+            }
+
+            console.log("[DEBUG] Fetching current position (Accuracy: Balanced)...");
+
+            const pos = await getCurrentPositionAsync({
+                accuracy: 4,
+            });
+            console.log("[DEBUG] Position coords:", pos.coords);
+
+            console.log("[DEBUG] Reverse geocoding coords...");
+            const reverse = await reverseGeocodeAsync({
+                latitude: pos.coords.latitude,
+                longitude: pos.coords.longitude,
+            });
+            console.log("[DEBUG] Reverse geocode result:", reverse);
+
+            if (reverse && reverse.length > 0) {
+                const addr = reverse[0];
+                const formatted = [
+                    addr.streetNumber,
+                    addr.street,
+                    addr.city,
+                    addr.region
+                ].filter(Boolean).join(", ");
+
+                console.log("[DEBUG] Formatted address:", formatted);
+                setUserInfo((prev) => ({ ...prev, address: formatted || prev.address }));
+            } else {
+                console.log("[DEBUG] No address returned from geocoder.");
+                Alert.alert("Location Warning", "Position found, but could not determine a specific street address.");
+            }
+        } catch (error) {
+            console.error("[DEBUG] Location Fetch Error Details:", error);
+            Alert.alert("Location Error", `System details: ${error instanceof Error ? error.message : "An unexpected service error occurred"}`);
+        } finally {
+            setLocationLoading(false);
+        }
+    }, []);
+
+    const handleOrder = async () => {
+        if (!userInfo.name.trim() || !userInfo.email.trim() || !userInfo.address.trim() || !userInfo.phone.trim()) {
+            Alert.alert("Missing Fields", "Please fill in all details to proceed");
+            return;
+        }
+
+        setLoading(true);
+        try {
+            // Get current user session
+            const { data: { user }, error: authError } = await supabase.auth.getUser();
+            if (authError || !user) {
+                throw new Error("You must be logged in to place an order");
+            }
+
+            const totalAmount = (parsedPrice * quantity + 1.0).toFixed(2);
+
+            const { error } = await supabase.from("orders").insert([
+                {
+                    item_name: coffeName,
+                    quantity: quantity,
+                    total_price: totalAmount,
+                    delivery_type: "Deliver",
+                    customer_name: userInfo.name,
+                    customer_email: userInfo.email,
+                    customer_phone: userInfo.phone,
+                    delivery_address: userInfo.address,
+                    status: "pending",
+                    user_id: user.id
+                },
+            ]);
+
+            if (error) throw error;
+
+            setModalVisible(false);
+            Alert.alert("Success", "Your order has been placed successfully!", [
+                {
+                    text: "Track Order",
+                    onPress: () => router.push({
+                        pathname: "/(tabs)/delivery",
+                        params: { address: userInfo.address }
+                    })
+                },
+            ]);
+        } catch (error: any) {
+            console.error("Order Submission Error:", error);
+            Alert.alert("Order Failed", error.message || "An unexpected error occurred");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <View style={styles.container}>
+            {/* Header */}
+            <View style={styles.header}>
+                <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+                    <Ionicons name="chevron-back" size={28} color="black" />
+                </TouchableOpacity>
+                <Text style={styles.headerTitle}>Review Order</Text>
+                <View style={{ width: 44 }} />
+            </View>
+
+            <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+                {/* Delivery Address Section */}
+                <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>Delivery Address</Text>
+                    <View style={styles.addressBox}>
+                        <View style={styles.addressIcon}>
+                            <Ionicons name="location" size={22} color="#C67C4E" />
+                        </View>
+                        <View style={{ flex: 1, marginLeft: 12 }}>
+                            <Text style={styles.addressLabel}>Delivery Destination</Text>
+                            <Text style={styles.addressText} numberOfLines={2}>
+                                {userInfo.address || "Please select your address"}
+                            </Text>
+                        </View>
+                        <TouchableOpacity style={styles.editBtn} onPress={() => setModalVisible(true)}>
+                            <Ionicons name="create-outline" size={20} color="#C67C4E" />
+                        </TouchableOpacity>
+                    </View>
+                </View>
+
+                {/* Order Summary Section */}
+                <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>Selected Item</Text>
+                    <View style={styles.orderCard}>
+                        {coffeImg && (
+                            <Image
+                                source={
+                                    typeof coffeImg === 'number'
+                                        ? coffeImg
+                                        : (typeof coffeImg === 'string' && !isNaN(Number(coffeImg)))
+                                            ? Number(coffeImg)
+                                            : { uri: coffeImg as string }
+                                }
+                                style={styles.orderImage}
+                            />
+                        )}
+                        <View style={{ flex: 1, marginLeft: 15 }}>
+                            <Text style={styles.orderName}>{coffeName}</Text>
+                            <Text style={styles.orderSub}>With Deep Foam</Text>
+                        </View>
+                        <View style={styles.qtyBox}>
+                            <TouchableOpacity onPress={() => setQuantity(Math.max(1, quantity - 1))}>
+                                <Ionicons name="remove-circle-outline" size={26} color="#C67C4E" />
+                            </TouchableOpacity>
+                            <Text style={styles.qtyText}>{quantity}</Text>
+                            <TouchableOpacity onPress={() => setQuantity(quantity + 1)}>
+                                <Ionicons name="add-circle-outline" size={26} color="#C67C4E" />
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+
+                {/* Pricing Summary Section */}
+                <View style={styles.section}>
+                    <View style={styles.priceRow}>
+                        <Text style={styles.priceLabel}>Items Subtotal</Text>
+                        <Text style={styles.priceValue}>${(parsedPrice * quantity).toFixed(2)}</Text>
+                    </View>
+                    <View style={styles.priceRow}>
+                        <Text style={styles.priceLabel}>Delivery Charge</Text>
+                        <Text style={styles.priceValue}>$1.00</Text>
+                    </View>
+                    <View style={styles.divider} />
+                    <View style={styles.priceRow}>
+                        <Text style={styles.totalLabel}>Total Payment</Text>
+                        <Text style={styles.totalValue}>${(parsedPrice * quantity + 1.0).toFixed(2)}</Text>
+                    </View>
+                </View>
+            </ScrollView>
+
+            {/* Modal for User Details */}
+            <Modal
+                animationType="slide"
+                transparent={true}
+                visible={modalVisible}
+                onRequestClose={() => setModalVisible(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>Delivery Details</Text>
+                            <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.closeBtn}>
+                                <Ionicons name="close" size={24} color="black" />
+                            </TouchableOpacity>
+                        </View>
+
+                        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
+                            <Text style={styles.inputLabel}>Full Name</Text>
+                            <View style={styles.inputContainer}>
+                                <Ionicons name="person-outline" size={20} color="#999" style={styles.inputIcon} />
+                                <TextInput
+                                    style={styles.textInput}
+                                    placeholder="Full Name"
+                                    value={userInfo.name}
+                                    onChangeText={(text) => setUserInfo(p => ({ ...p, name: text }))}
+                                />
+                            </View>
+
+                            <Text style={styles.inputLabel}>Email Address</Text>
+                            <View style={styles.inputContainer}>
+                                <Ionicons name="mail-outline" size={20} color="#999" style={styles.inputIcon} />
+                                <TextInput
+                                    style={styles.textInput}
+                                    placeholder="Email Address"
+                                    keyboardType="email-address"
+                                    value={userInfo.email}
+                                    onChangeText={(text) => setUserInfo(p => ({ ...p, email: text }))}
+                                />
+                            </View>
+
+                            <Text style={styles.inputLabel}>Phone Number</Text>
+                            <View style={styles.inputContainer}>
+                                <Ionicons name="call-outline" size={20} color="#999" style={styles.inputIcon} />
+                                <TextInput
+                                    style={styles.textInput}
+                                    placeholder="Phone Number"
+                                    keyboardType="phone-pad"
+                                    value={userInfo.phone}
+                                    onChangeText={(text) => setUserInfo(p => ({ ...p, phone: text }))}
+                                />
+                            </View>
+
+                            <View style={styles.addressLabelRow}>
+                                <Text style={styles.inputLabel}>Detailed Address</Text>
+                                <TouchableOpacity
+                                    onPress={getCurrentLocation}
+                                    disabled={locationLoading}
+                                    style={styles.locationLink}
+                                >
+                                    {locationLoading ? (
+                                        <ActivityIndicator size="small" color="#C67C4E" />
+                                    ) : (
+                                        <>
+                                            <Ionicons name="locate" size={16} color="#C67C4E" />
+                                            <Text style={styles.locationLinkText}>Use Current</Text>
+                                        </>
+                                    )}
+                                </TouchableOpacity>
+                            </View>
+                            <TextInput
+                                style={[styles.textInput, styles.textArea]}
+                                placeholder="123 Coffee St, Bean Town..."
+                                multiline
+                                numberOfLines={3}
+                                value={userInfo.address}
+                                onChangeText={(text) => setUserInfo(p => ({ ...p, address: text }))}
+                            />
+
+                            <TouchableOpacity
+                                style={[styles.confirmBtn, loading && { opacity: 0.7 }]}
+                                onPress={handleOrder}
+                                disabled={loading}
+                            >
+                                {loading ? (
+                                    <ActivityIndicator color="white" />
+                                ) : (
+                                    <Text style={styles.confirmBtnText}>Confirm Order</Text>
+                                )}
+                            </TouchableOpacity>
+                        </ScrollView>
+                    </View>
+                </View>
+            </Modal>
+
+            {/* Persistent Bottom Section */}
+            <View style={styles.footer}>
+                <View style={styles.paymentPreview}>
+                    <View style={styles.walletBadge}>
+                        <Ionicons name="wallet-outline" size={24} color="#C67C4E" />
+                    </View>
+                    <View style={{ flex: 1, marginLeft: 12 }}>
+                        <Text style={styles.paymentMethod}>Cash on Delivery</Text>
+                        <Text style={styles.paymentAmount}>Total: ${(parsedPrice * quantity + 1.0).toFixed(2)}</Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={18} color="#999" />
+                </View>
+
+                <TouchableOpacity
+                    style={styles.mainOrderBtn}
+                    onPress={() => setModalVisible(true)}
+                >
+                    <Text style={styles.mainOrderBtnText}>Place My Order</Text>
+                </TouchableOpacity>
+            </View>
+        </View>
+    );
+};
+
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        backgroundColor: "#FDFDFD",
+        paddingTop: responsiveHeight(7),
+    },
+    header: {
+        flexDirection: "row",
+        alignItems: "center",
+        paddingHorizontal: responsiveWidth(5),
+        marginBottom: 10,
+    },
+    backBtn: {
+        padding: 8,
+        marginLeft: -8,
+    },
+    headerTitle: {
+        flex: 1,
+        textAlign: "center",
+        fontSize: 20,
+        fontWeight: "700",
+        color: "#2F2D2C",
+    },
+    scrollContent: {
+        paddingHorizontal: responsiveWidth(5),
+        paddingBottom: 140,
+    },
+    section: {
+        marginTop: 24,
+    },
+    sectionTitle: {
+        fontSize: 18,
+        fontWeight: "700",
+        color: "#2F2D2C",
+        marginBottom: 12,
+    },
+    addressBox: {
+        flexDirection: "row",
+        alignItems: "center",
+        backgroundColor: "white",
+        padding: 16,
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: "#F0F0F0",
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 5,
+        elevation: 3,
+    },
+    addressIcon: {
+        width: 44,
+        height: 44,
+        backgroundColor: "#F9F2ED",
+        borderRadius: 12,
+        alignItems: "center",
+        justifyContent: "center",
+    },
+    addressLabel: {
+        fontSize: 14,
+        fontWeight: "600",
+        color: "#999",
+        marginBottom: 2,
+    },
+    addressText: {
+        fontSize: 15,
+        fontWeight: "600",
+        color: "#2F2D2C",
+    },
+    editBtn: {
+        padding: 4,
+    },
+    orderCard: {
+        flexDirection: "row",
+        alignItems: "center",
+        backgroundColor: "white",
+        padding: 12,
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: "#F0F0F0",
+    },
+    orderImage: {
+        width: 70,
+        height: 70,
+        borderRadius: 14,
+    },
+    orderName: {
+        fontSize: 17,
+        fontWeight: "700",
+        color: "#2F2D2C",
+    },
+    orderSub: {
+        fontSize: 13,
+        color: "#999",
+        marginTop: 2,
+    },
+    qtyBox: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 12,
+    },
+    qtyText: {
+        fontSize: 16,
+        fontWeight: "700",
+        color: "#2F2D2C",
+        minWidth: 20,
+        textAlign: "center",
+    },
+    priceRow: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        marginBottom: 10,
+    },
+    priceLabel: {
+        fontSize: 16,
+        color: "#2F2D2C",
+    },
+    priceValue: {
+        fontSize: 16,
+        fontWeight: "700",
+        color: "#2F2D2C",
+    },
+    divider: {
+        height: 1,
+        backgroundColor: "#F0F0F0",
+        marginVertical: 12,
+    },
+    totalLabel: {
+        fontSize: 17,
+        fontWeight: "700",
+        color: "#2F2D2C",
+    },
+    totalValue: {
+        fontSize: 18,
+        fontWeight: "800",
+        color: "#C67C4E",
+    },
+    footer: {
+        position: "absolute",
+        bottom: 0,
+        left: 0,
+        right: 0,
+        backgroundColor: "white",
+        padding: 24,
+        borderTopLeftRadius: 28,
+        borderTopRightRadius: 28,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: -10 },
+        shadowOpacity: 0.08,
+        shadowRadius: 15,
+        elevation: 25,
+    },
+    paymentPreview: {
+        flexDirection: "row",
+        alignItems: "center",
+        backgroundColor: "#F9F9F9",
+        padding: 12,
+        borderRadius: 16,
+        marginBottom: 20,
+    },
+    walletBadge: {
+        width: 44,
+        height: 44,
+        backgroundColor: "#F9F2ED",
+        borderRadius: 12,
+        alignItems: "center",
+        justifyContent: "center",
+    },
+    paymentMethod: {
+        fontSize: 15,
+        fontWeight: "700",
+        color: "#2F2D2C",
+    },
+    paymentAmount: {
+        fontSize: 13,
+        color: "#C67C4E",
+        fontWeight: "600",
+    },
+    mainOrderBtn: {
+        backgroundColor: "#C67C4E",
+        paddingVertical: 18,
+        borderRadius: 18,
+        alignItems: "center",
+    },
+    mainOrderBtnText: {
+        color: "white",
+        fontSize: 18,
+        fontWeight: "700",
+    },
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: "rgba(0,0,0,0.6)",
+        justifyContent: "flex-end",
+    },
+    modalContent: {
+        backgroundColor: "white",
+        borderTopLeftRadius: 32,
+        borderTopRightRadius: 32,
+        padding: 24,
+        maxHeight: responsiveHeight(85),
+    },
+    modalHeader: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center",
+        marginBottom: 24,
+    },
+    modalTitle: {
+        fontSize: 22,
+        fontWeight: "800",
+        color: "#2F2D2C",
+    },
+    closeBtn: {
+        padding: 4,
+    },
+    inputLabel: {
+        fontSize: 15,
+        fontWeight: "700",
+        color: "#2F2D2C",
+        marginBottom: 8,
+        marginTop: 16,
+    },
+    inputContainer: {
+        flexDirection: "row",
+        alignItems: "center",
+        backgroundColor: "#F7F7F7",
+        borderRadius: 14,
+        paddingHorizontal: 16,
+        borderWidth: 1,
+        borderColor: "#EEE",
+    },
+    inputIcon: {
+        marginRight: 12,
+    },
+    textInput: {
+        flex: 1,
+        height: 54,
+        fontSize: 15,
+        color: "#2F2D2C",
+        fontWeight: "500",
+    },
+    addressLabelRow: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "flex-end",
+        marginBottom: 8,
+        marginTop: 16,
+    },
+    locationLink: {
+        flexDirection: "row",
+        alignItems: "center",
+        paddingBottom: 2,
+        gap: 4,
+    },
+    locationLinkText: {
+        fontSize: 14,
+        fontWeight: "700",
+        color: "#C67C4E",
+    },
+    textArea: {
+        height: 80,
+        backgroundColor: "#F7F7F7",
+        borderRadius: 14,
+        paddingHorizontal: 16,
+        paddingTop: 14,
+        textAlignVertical: "top",
+        borderWidth: 1,
+        borderColor: "#EEE",
+    },
+    confirmBtn: {
+        backgroundColor: "#C67C4E",
+        paddingVertical: 18,
+        borderRadius: 16,
+        alignItems: "center",
+        marginTop: 32,
+        shadowColor: "#C67C4E",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 8,
+    },
+    confirmBtnText: {
+        color: "white",
+        fontSize: 18,
+        fontWeight: "700",
+    },
+});
+
+export default Checkout;

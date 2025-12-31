@@ -7,7 +7,11 @@ create table public.orders (
   total_price numeric not null,
   delivery_type text not null,
   status text default 'pending' check (status in ('pending', 'accepted', 'rejected')),
-  user_id uuid references auth.users(id)
+  user_id uuid references auth.users(id),
+  customer_name text,
+  customer_email text,
+  customer_phone text,
+  delivery_address text
 );
 
 -- Enable Row Level Security (RLS)

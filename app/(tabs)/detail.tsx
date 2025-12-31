@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useState } from "react";
+import { useFavorites } from "../../context/FavoritesContext";
 import {
   Image,
   ScrollView,
@@ -16,12 +17,14 @@ import {
 } from "react-native-responsive-dimensions";
 
 const Detail = () => {
-  const { coffeImg, coffeName, coffePrice, location } = useLocalSearchParams() as {
-    coffeImg: any;
-    coffeName: string;
-    coffePrice: string;
-    location: string;
-  };
+  const { coffeImg, coffeName, coffePrice, location } =
+    useLocalSearchParams() as {
+      coffeImg: any;
+      coffeName: string;
+      coffePrice: string;
+      location: string;
+    };
+  const { toggleFavorite, isFavorite } = useFavorites();
   const [button, setButton] = useState("M");
   const [price, setPrice] = useState(coffePrice);
   const imgs = [
@@ -56,7 +59,13 @@ const Detail = () => {
           <Ionicons name="chevron-back" size={32} color={"black"} />
         </TouchableOpacity>
         <Text style={styles.headerTitel}>Detail</Text>
-        <Ionicons name="heart-outline" size={32} color={"black"} />
+        <TouchableOpacity onPress={() => toggleFavorite({ name: coffeName, subTitle: "Hot", price: coffePrice, image: coffeImg })}>
+          <Ionicons
+            name={isFavorite(coffeName) ? "heart" : "heart-outline"}
+            size={32}
+            color={isFavorite(coffeName) ? "#C67C4E" : "black"}
+          />
+        </TouchableOpacity>
       </View>
       <ScrollView>
         {/* Image  */}
@@ -77,7 +86,6 @@ const Detail = () => {
             <View style={styles.leftsidethings}>
               <Text style={styles.coffeetitel}>{coffeName}</Text>
               <Text style={styles.subTitel}>Hot</Text>
-
             </View>
             {/* right side */}
             <View style={styles.rightSide}>
@@ -103,7 +111,6 @@ const Detail = () => {
           <Text style={styles.description}>
             A cappuccino is an approximately 150 ml (5 oz) beverage, with 25 ml
             of espresso coffee and 85ml of fresh milk the fo...
-
             <Text
               style={{
                 color: "#C67C4E",
@@ -113,7 +120,6 @@ const Detail = () => {
             >
               Read More
             </Text>
-
           </Text>
         </View>
         <View style={styles.sizeBox}>
@@ -155,7 +161,7 @@ const Detail = () => {
           style={styles.btn}
           onPress={() => {
             router.push({
-              pathname: "/checkout",
+              pathname: "/(tabs)/checkout",
               params: { coffeImg, coffeName, coffePrice: price, location },
             });
           }}

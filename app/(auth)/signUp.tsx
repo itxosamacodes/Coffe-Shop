@@ -12,7 +12,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { supabase } from "../../utils/supabse";
+import { supabase } from "../../utils/supabase";
 
 export default function CoffeeSignUpScreen() {
   const [fullName, setFullName] = useState("");

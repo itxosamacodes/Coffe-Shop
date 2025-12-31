@@ -1,4 +1,4 @@
-import { supabase } from "@/utils/supabse";
+import { supabase } from "@/utils/supabase";
 import { Feather, Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React, { useState } from "react";

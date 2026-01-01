@@ -10,10 +10,7 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.CoffeeShop",
-      "infoPlist": {
-        "MBXAccessToken": "$MAPBOX_ACCESS_TOKEN"
-      }
+      "bundleIdentifier": "com.anonymous.CoffeeShop"
     },
     "android": {
       "package": "com.anonymous.CoffeeShop",
@@ -40,13 +37,6 @@
           "dark": {
             "backgroundColor": "#000000"
           }
-        }
-      ],
-      [
-        "@rnmapbox/maps",
-        {
-          "RNMapboxMapsImpl": "mapbox",
-          "accessToken": "$MAPBOX_ACCESS_TOKEN"
         }
       ],
       [

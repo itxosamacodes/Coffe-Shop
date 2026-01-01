@@ -1,6 +1,7 @@
+import { Image } from "expo-image";
 import { router } from "expo-router";
 import React from "react";
-import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import {
   responsiveFontSize,
   responsiveScreenHeight,
@@ -11,7 +12,12 @@ const index = () => {
   return (
     <View style={styles.HomeScreen}>
       <View style={styles.img}>
-        <Image source={require("../assets/AppImg/home.png")} />
+        <Image
+          source={require("../assets/AppImg/home.png")}
+          style={{ width: responsiveScreenWidth(100), height: responsiveScreenHeight(55) }}
+          contentFit="cover"
+          priority="high"
+        />
       </View>
       <View style={styles.textArea}>
         <Text style={styles.titel}>
@@ -24,7 +30,7 @@ const index = () => {
         <TouchableOpacity
           style={styles.button}
           onPress={() => {
-            router.push("/(auth)/welcome");
+            router.replace("/(auth)/welcome");
           }}
         >
           <Text style={styles.buttonTitel}>Get Started</Text>

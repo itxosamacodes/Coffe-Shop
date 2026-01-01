@@ -32,7 +32,7 @@ const Welcome = () => {
           <TouchableOpacity
             style={styles.card}
             activeOpacity={0.7}
-            onPress={() => router.push("/(auth)/signIn")}
+            onPress={() => router.replace("/(auth)/signIn")}
           >
             <View style={styles.iconWrapper}>
               <View style={styles.iconContainer}>
@@ -59,7 +59,7 @@ const Welcome = () => {
           <TouchableOpacity
             style={styles.card}
             activeOpacity={0.7}
-            onPress={() => router.push("/(auth)/signIn")}
+            onPress={() => router.replace("/(auth)/signIn")}
           >
             <View style={styles.iconWrapper}>
               <View style={styles.iconContainer}>

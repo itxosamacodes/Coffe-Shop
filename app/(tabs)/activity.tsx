@@ -79,23 +79,6 @@ const ActivityScreen = () => {
                 }
             />
 
-            {/* Bottom Nav Mock (Since we are in a Stack but behaving like tabs) */}
-            <View style={styles.bottomNav}>
-                <TouchableOpacity style={styles.navItem} onPress={() => router.push("/(tabs)/home")}>
-                    <Ionicons name="home-outline" size={24} color="#8D8D8D" />
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.navItem} onPress={() => router.push("/(tabs)/favorites")}>
-                    <Ionicons name="heart-outline" size={24} color="#8D8D8D" />
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.navItem} onPress={() => router.push("/(tabs)/orders")}>
-                    <Ionicons name="bag-outline" size={24} color="#8D8D8D" />
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.navItem}>
-                    <View style={styles.activeNavIcon}>
-                        <Ionicons name="notifications" size={24} color="#ffffff" />
-                    </View>
-                </TouchableOpacity>
-            </View>
         </View>
     );
 };
@@ -179,36 +162,5 @@ const styles = StyleSheet.create({
         color: "#999",
         marginTop: 10,
     },
-    bottomNav: {
-        position: "absolute",
-        bottom: 0,
-        left: 0,
-        right: 0,
-        height: 70,
-        backgroundColor: "#ffffff",
-        flexDirection: "row",
-        justifyContent: "space-around",
-        alignItems: "center",
-        paddingHorizontal: 40,
-        borderTopLeftRadius: 24,
-        borderTopRightRadius: 24,
-        elevation: 10,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: -2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 8,
-    },
-    navItem: {
-        flex: 1,
-        alignItems: "center",
-        justifyContent: "center",
-    },
-    activeNavIcon: {
-        backgroundColor: "#C67C4E",
-        width: 50,
-        height: 50,
-        borderRadius: 12,
-        justifyContent: "center",
-        alignItems: "center",
-    },
 });
+

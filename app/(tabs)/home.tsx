@@ -1,8 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
+import { Image } from "expo-image";
 import { router } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
-  Image,
+  Alert,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -17,6 +18,7 @@ import {
   responsiveHeight,
   responsiveWidth,
 } from "react-native-responsive-dimensions";
+import { supabase } from "../../utils/supabase";
 
 const Home = () => {
   const data = [
@@ -36,6 +38,16 @@ const Home = () => {
     });
   };
   const [selectedCategory, setSelectedCategory] = useState("All Coffee");
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const handleSignOut = async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      Alert.alert("Error", error.message);
+    } else {
+      router.replace("/");
+    }
+  };
 
   const categories = ["All Coffee", "Machiato", "Latte", "American"];
   const [value, setValue] = useState("islamabad");
@@ -103,8 +115,14 @@ const Home = () => {
   ];
   const [Arraydata, setArrayData] = useState<any[]>([]);
   useEffect(() => {
-    setArrayData(coffeeData);
-  }, []);
+    const filtered = coffeeData.filter((item) => {
+      const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.subTitle.toLowerCase().includes(searchQuery.toLowerCase());
+      return matchesSearch;
+    });
+    setArrayData(filtered);
+  }, [searchQuery]);
+  const inputRef = useRef<TextInput>(null)
 
   return (
     <View style={styles.container}>
@@ -116,26 +134,31 @@ const Home = () => {
           <View style={styles.form}>
             <Text style={styles.title}>Location</Text>
             <View style={styles.dropContainer}>
-              <Dropdown
-                data={data}
-                labelField="label"
-                valueField="value"
-                value={value}
-                onChange={(item) => setValue(item.value)}
-                selectedTextStyle={{
-                  color: "#D8D8D8",
-                  fontWeight: "600",
-                  fontSize: responsiveFontSize(2),
-                }}
-                renderRightIcon={() => (
-                  <Ionicons
-                    style={styles.dropdownIcon}
-                    color="white"
-                    name="chevron-down"
-                    size={20}
-                  />
-                )}
-              />
+              <View style={{ width: 200 }}>
+                <Dropdown
+                  data={data}
+                  labelField="label"
+                  valueField="value"
+                  value={value}
+                  onChange={(item) => setValue(item.value)}
+                  selectedTextStyle={{
+                    color: "#D8D8D8",
+                    fontWeight: "600",
+                    fontSize: responsiveFontSize(2),
+                  }}
+                  renderRightIcon={() => (
+                    <Ionicons
+                      style={styles.dropdownIcon}
+                      color="white"
+                      name="chevron-down"
+                      size={20}
+                    />
+                  )}
+                />
+              </View>
+              <TouchableOpacity onPress={handleSignOut}>
+                <Ionicons name="log-out" size={25} color="grey" />
+              </TouchableOpacity>
             </View>
             {/* Search Row */}
             <View style={styles.searchRow}>
@@ -150,10 +173,13 @@ const Home = () => {
                   style={styles.input}
                   placeholder="Search coffee"
                   placeholderTextColor="#989898"
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                  ref={inputRef}
                 />
-                <View style={styles.filterBtn}>
-                  <Image source={require("../../assets/AppImg/filter.png")} />
-                </View>
+                <TouchableOpacity style={styles.filterBtn} onPress={() => { inputRef.current?.focus() }}>
+                  <Ionicons name="filter-outline" size={22} color="#FFFFFF" />
+                </TouchableOpacity>
               </View>
             </View>
           </View>
@@ -165,7 +191,10 @@ const Home = () => {
         <Image
           source={require("../../assets/AppImg/Banner.png")}
           style={styles.banner}
-          resizeMode="cover"
+          contentFit="cover"
+          priority="high"
+          cachePolicy="memory-disk"
+          transition={0}
         />
         <View style={styles.bannerTextContainer}>
           <Text style={styles.promoTag}>Promo</Text>
@@ -176,7 +205,7 @@ const Home = () => {
       </View>
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 20 }}
+        contentContainerStyle={{ paddingBottom: 100 }}
       >
         {/* Categories Menu */}
         <ScrollView
@@ -216,7 +245,7 @@ const Home = () => {
                     <Ionicons name="star" color="#D17842" size={12} />
                     <Text style={styles.ratingText}>{item.rating}</Text>
                   </View>
-                  <Image source={item.image} style={styles.cardImage} />
+                  <Image source={item.image} style={styles.cardImage} contentFit="cover" transition={200} />
                   <Text style={styles.cardTitle}>{item.name}</Text>
                   <Text style={styles.cardSubtitle}>{item.subTitle}</Text>
                   <View style={styles.priceRow}>
@@ -243,25 +272,7 @@ const Home = () => {
             </View>
           )}
         </View>
-        <View style={{ height: 70, width: "100%", bottom: 100 }}></View>
       </ScrollView>
-      {/* botom menu */}
-      <View style={styles.bottomNav}>
-        <TouchableOpacity style={styles.navItem} onPress={() => router.push("/(tabs)/home")}>
-          <View style={styles.activeNavIcon}>
-            <Ionicons name="home" size={24} color="#ffffff" />
-          </View>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem} onPress={() => router.push("/(tabs)/favorites")}>
-          <Ionicons name="heart-outline" size={24} color="#8D8D8D" />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem} onPress={() => router.push("/(tabs)/orders")}>
-          <Ionicons name="bag-outline" size={24} color="#8D8D8D" />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem} onPress={() => router.push("/(tabs)/activity")}>
-          <Ionicons name="notifications-outline" size={24} color="#8D8D8D" />
-        </TouchableOpacity>
-      </View>
     </View>
   );
 };
@@ -292,8 +303,11 @@ const styles = StyleSheet.create({
     marginBottom: 5,
   },
   dropContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 20,
-    width: 200,
+    width: "100%",
   },
   dropdownIcon: {
     marginLeft: 5,
@@ -320,13 +334,12 @@ const styles = StyleSheet.create({
   },
   filterBtn: {
     backgroundColor: "#C67C4E",
-    height: 44,
-    width: 44,
+    height: 54,
+    width: 54,
     borderRadius: 12,
     justifyContent: "center",
     alignItems: "center",
-    paddingLeft: 10,
-    marginRight: 6,
+    marginRight: -10,
   },
 
   // Banner
@@ -481,40 +494,5 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#999",
   },
-  // botom nav
-  bottomNav: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 70,
-    backgroundColor: "#ffffff",
-    flexDirection: "row",
-    justifyContent: "space-around",
-    alignItems: "center",
-    paddingHorizontal: 40,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: -2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 10,
-  },
-  navItem: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  activeNavIcon: {
-    backgroundColor: "#C67C4E",
-    width: 50,
-    height: 50,
-    borderRadius: 12,
-    justifyContent: "center",
-    alignItems: "center",
-  },
 });
+

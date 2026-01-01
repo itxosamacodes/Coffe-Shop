@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import { Image } from "expo-image";
 import {
     getCurrentPositionAsync,
     requestForegroundPermissionsAsync,
@@ -9,7 +10,6 @@ import React, { useCallback, useState } from "react";
 import {
     ActivityIndicator,
     Alert,
-    Image,
     Modal,
     ScrollView,
     StyleSheet,
@@ -192,6 +192,8 @@ const Checkout = () => {
                                             : { uri: coffeImg as string }
                                 }
                                 style={styles.orderImage}
+                                contentFit="cover"
+                                transition={200}
                             />
                         )}
                         <View style={{ flex: 1, marginLeft: 15 }}>
@@ -251,6 +253,7 @@ const Checkout = () => {
                                 <TextInput
                                     style={styles.textInput}
                                     placeholder="Full Name"
+                                    placeholderTextColor="#999"
                                     value={userInfo.name}
                                     onChangeText={(text) => setUserInfo(p => ({ ...p, name: text }))}
                                 />
@@ -262,6 +265,7 @@ const Checkout = () => {
                                 <TextInput
                                     style={styles.textInput}
                                     placeholder="Email Address"
+                                    placeholderTextColor="#999"
                                     keyboardType="email-address"
                                     value={userInfo.email}
                                     onChangeText={(text) => setUserInfo(p => ({ ...p, email: text }))}
@@ -274,6 +278,7 @@ const Checkout = () => {
                                 <TextInput
                                     style={styles.textInput}
                                     placeholder="Phone Number"
+                                    placeholderTextColor="#999"
                                     keyboardType="phone-pad"
                                     value={userInfo.phone}
                                     onChangeText={(text) => setUserInfo(p => ({ ...p, phone: text }))}
@@ -300,6 +305,7 @@ const Checkout = () => {
                             <TextInput
                                 style={[styles.textInput, styles.textArea]}
                                 placeholder="123 Coffee St, Bean Town..."
+                                placeholderTextColor="#999"
                                 multiline
                                 numberOfLines={3}
                                 value={userInfo.address}

@@ -1,9 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
+import { Image } from "expo-image";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useState } from "react";
-import { useFavorites } from "../../context/FavoritesContext";
 import {
-  Image,
   ScrollView,
   StyleSheet,
   Text,
@@ -15,6 +14,7 @@ import {
   responsiveHeight,
   responsiveWidth,
 } from "react-native-responsive-dimensions";
+import { useFavorites } from "../../context/FavoritesContext";
 
 const Detail = () => {
   const { coffeImg, coffeName, coffePrice, location } =
@@ -71,13 +71,20 @@ const Detail = () => {
         {/* Image  */}
         <View style={styles.img}>
           <Image
-            source={coffeImg}
+            source={
+              typeof coffeImg === "number"
+                ? coffeImg
+                : typeof coffeImg === "string" && !isNaN(Number(coffeImg))
+                  ? Number(coffeImg)
+                  : { uri: coffeImg as string }
+            }
             style={{
               borderRadius: 15,
-              resizeMode: "cover",
               height: responsiveHeight(23),
               width: responsiveWidth(87),
             }}
+            contentFit="cover"
+            transition={200}
           />
         </View>
         <View style={styles.CoffeContainer}>
@@ -91,7 +98,7 @@ const Detail = () => {
             <View style={styles.rightSide}>
               {imgs.map((item, index) => (
                 <View key={index} style={styles.imgBox}>
-                  <Image source={item.img} />
+                  <Image source={item.img} style={{ width: 30, height: 30 }} contentFit="contain" />
                 </View>
               ))}
             </View>

@@ -1,38 +1,32 @@
 import { Ionicons } from "@expo/vector-icons";
 import BottomSheet, { BottomSheetView } from "@gorhom/bottom-sheet";
-import MapboxGL from "@rnmapbox/maps";
+import { Image } from "expo-image";
 import * as Location from "expo-location";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Image, StyleSheet, Text, TouchableOpacity, View, Alert, ActivityIndicator } from "react-native";
+import { ActivityIndicator, Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { responsiveHeight, responsiveWidth, responsiveFontSize } from "react-native-responsive-dimensions";
-
-MapboxGL.setAccessToken(
-  "pk.eyJ1Ijoic2hvYWliMjciLCJhIjoiY21qaDBqOXhyMTZtODNjcXpwdzk1a3U5MyJ9.nX11n_uZd8pgvX9PC3IDgA"
-);
+import MapView, { Marker, Polyline } from "react-native-maps";
+import { responsiveFontSize, responsiveHeight, responsiveWidth } from "react-native-responsive-dimensions";
 
 // Shop location: 33.6323° N, 72.9228° E
-const SHOP_LOCATION: [number, number] = [72.9228, 33.6323];
+const SHOP_LOCATION = {
+  latitude: 33.6323,
+  longitude: 72.9228,
+};
 
-export default function MapScreen() {
+const MapScreen = () => {
   const params = useLocalSearchParams();
   const deliveryAddress = (params.address as string) || "Jl. Kpg Sutoyo";
 
   const bottomSheetRef = useRef<BottomSheet>(null);
-  const cameraRef = useRef<MapboxGL.Camera>(null);
+  const mapRef = useRef<MapView>(null);
   const snapPoints = useMemo(() => ["5%", "28%"], []);
 
-  const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
+  const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [distance, setDistance] = useState<string>("Calculating...");
   const [loading, setLoading] = useState(true);
-  const [mapStyleIndex, setMapStyleIndex] = useState(0);
-
-  const mapStyles = [
-    MapboxGL.StyleURL.Light,
-    MapboxGL.StyleURL.Satellite,
-    MapboxGL.StyleURL.Street,
-  ];
+  const [mapType, setMapType] = useState<"standard" | "satellite" | "hybrid">("standard");
 
   const handleSheetChanges = useCallback((index: number) => {
     console.log("handleSheetChanges", index);
@@ -62,10 +56,13 @@ export default function MapScreen() {
       }
 
       let location = await Location.getCurrentPositionAsync({});
-      const userCoords: [number, number] = [location.coords.longitude, location.coords.latitude];
+      const userCoords = {
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+      };
       setUserLocation(userCoords);
 
-      const dist = calculateDistance(SHOP_LOCATION[1], SHOP_LOCATION[0], userCoords[1], userCoords[0]);
+      const dist = calculateDistance(SHOP_LOCATION.latitude, SHOP_LOCATION.longitude, userCoords.latitude, userCoords.longitude);
       setDistance(`${dist} km`);
       setLoading(false);
     } catch (error) {
@@ -79,35 +76,42 @@ export default function MapScreen() {
   }, []);
 
   const locateSelf = () => {
-    if (userLocation && cameraRef.current) {
-      cameraRef.current.setCamera({
-        centerCoordinate: userLocation,
-        zoomLevel: 14,
-        animationDuration: 1000,
-      });
+    if (userLocation && mapRef.current) {
+      mapRef.current.animateToRegion({
+        ...userLocation,
+        latitudeDelta: 0.01,
+        longitudeDelta: 0.01,
+      }, 1000);
     } else {
       fetchUserLocation();
     }
   };
 
   const toggleMapStyle = () => {
-    setMapStyleIndex((current) => (current + 1) % mapStyles.length);
+    setMapType((current) => {
+      if (current === "standard") return "satellite";
+      if (current === "satellite") return "hybrid";
+      return "standard";
+    });
   };
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <View style={styles.container}>
-        <MapboxGL.MapView style={styles.map} styleURL={mapStyles[mapStyleIndex]}>
-          <MapboxGL.Camera
-            ref={cameraRef}
-            zoomLevel={12}
-            centerCoordinate={SHOP_LOCATION}
-          />
-
+        <MapView
+          ref={mapRef}
+          style={styles.map}
+          mapType={mapType}
+          initialRegion={{
+            ...SHOP_LOCATION,
+            latitudeDelta: 0.05,
+            longitudeDelta: 0.05,
+          }}
+        >
           {/* Shop Marker */}
-          <MapboxGL.PointAnnotation
-            id="shopMarker"
+          <Marker
             coordinate={SHOP_LOCATION}
+            title="Coffee Shop"
           >
             <View style={styles.markerContainer}>
               <View style={styles.shopMarkerCircle}>
@@ -120,48 +124,32 @@ export default function MapScreen() {
                 <Text style={styles.markerLabelText}>Coffee Shop</Text>
               </View>
             </View>
-          </MapboxGL.PointAnnotation>
+          </Marker>
 
           {/* User Marker */}
           {userLocation && (
             <>
-              <MapboxGL.PointAnnotation
-                id="userMarker"
+              <Marker
                 coordinate={userLocation}
+                title="Your Location"
               >
                 <View style={styles.markerContainer}>
                   <View style={styles.userMarkerCircle}>
                     <Ionicons name="person-circle" size={32} color="white" />
                   </View>
                 </View>
-              </MapboxGL.PointAnnotation>
+              </Marker>
 
               {/* Line from Shop to User */}
-              <MapboxGL.ShapeSource
-                id="routeSource"
-                shape={{
-                  type: "Feature",
-                  geometry: {
-                    type: "LineString",
-                    coordinates: [SHOP_LOCATION, userLocation],
-                  },
-                  properties: {},
-                }}
-              >
-                <MapboxGL.LineLayer
-                  id="routeLayer"
-                  style={{
-                    lineColor: "#C67C4E",
-                    lineWidth: 4,
-                    lineJoin: "round",
-                    lineCap: "round",
-                    lineDasharray: [2, 2], // Optional: make it dashed
-                  }}
-                />
-              </MapboxGL.ShapeSource>
+              <Polyline
+                coordinates={[SHOP_LOCATION, userLocation]}
+                strokeColor="#C67C4E"
+                strokeWidth={4}
+                lineDashPattern={[5, 5]}
+              />
             </>
           )}
-        </MapboxGL.MapView>
+        </MapView>
 
         <View style={styles.header}>
           <TouchableOpacity
@@ -174,7 +162,7 @@ export default function MapScreen() {
           <View style={{ flexDirection: 'row', gap: 10 }}>
             <TouchableOpacity style={styles.iconBox} onPress={toggleMapStyle}>
               <Ionicons
-                name={mapStyleIndex === 1 ? "map-outline" : "layers-outline"}
+                name={mapType === "satellite" ? "map-outline" : "layers-outline"}
                 size={24}
                 color="black"
               />
@@ -209,6 +197,7 @@ export default function MapScreen() {
                   <Image
                     source={require("../../assets/AppImg/u.jpeg")}
                     style={styles.PimgBox}
+                    transition={200}
                   />
                   <View style={{ flex: 1, marginLeft: 15 }}>
                     <Text style={styles.cardTitle}>Brooklyn Simmons</Text>
@@ -240,6 +229,7 @@ const styles = StyleSheet.create({
     alignSelf: "center",
     alignItems: "center",
     justifyContent: "space-between",
+    zIndex: 10,
   },
   iconBox: {
     height: responsiveHeight(6),
@@ -258,8 +248,6 @@ const styles = StyleSheet.create({
   markerContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    width: 40,
-    height: 40,
   },
   shopMarkerCircle: {
     width: 36,
@@ -312,7 +300,6 @@ const styles = StyleSheet.create({
     marginTop: 4,
     borderWidth: 1,
     borderColor: '#ddd',
-    zIndex: 10,
   },
   markerLabelText: {
     fontSize: 10,
@@ -400,3 +387,5 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
 });
+
+export default MapScreen;

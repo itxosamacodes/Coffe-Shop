@@ -1,18 +1,17 @@
 import { Ionicons } from "@expo/vector-icons";
+import { Image } from "expo-image";
 import { router } from "expo-router";
 import React from "react";
 import {
     FlatList,
-    Image,
     StyleSheet,
     Text,
     TouchableOpacity,
     View,
 } from "react-native";
 import {
-    responsiveFontSize,
     responsiveHeight,
-    responsiveWidth,
+    responsiveWidth
 } from "react-native-responsive-dimensions";
 
 const recentOrders = [
@@ -54,7 +53,7 @@ const OrdersScreen = () => {
                 contentContainerStyle={styles.listContent}
                 renderItem={({ item }) => (
                     <TouchableOpacity style={styles.orderCard}>
-                        <Image source={item.image} style={styles.orderImage} />
+                        <Image source={item.image} style={styles.orderImage} contentFit="cover" transition={200} />
                         <View style={styles.orderInfo}>
                             <View style={styles.topRow}>
                                 <Text style={styles.orderName}>{item.name}</Text>
@@ -86,23 +85,6 @@ const OrdersScreen = () => {
                 }
             />
 
-            {/* Bottom Nav Mock */}
-            <View style={styles.bottomNav}>
-                <TouchableOpacity style={styles.navItem} onPress={() => router.push("/(tabs)/home")}>
-                    <Ionicons name="home-outline" size={24} color="#8D8D8D" />
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.navItem} onPress={() => router.push("/(tabs)/favorites")}>
-                    <Ionicons name="heart-outline" size={24} color="#8D8D8D" />
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.navItem}>
-                    <View style={styles.activeNavIcon}>
-                        <Ionicons name="bag" size={24} color="#ffffff" />
-                    </View>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.navItem} onPress={() => router.push("/(tabs)/activity")}>
-                    <Ionicons name="notifications-outline" size={24} color="#8D8D8D" />
-                </TouchableOpacity>
-            </View>
         </View>
     );
 };
@@ -215,36 +197,5 @@ const styles = StyleSheet.create({
         color: "#999",
         marginTop: 10,
     },
-    bottomNav: {
-        position: "absolute",
-        bottom: 0,
-        left: 0,
-        right: 0,
-        height: 70,
-        backgroundColor: "#ffffff",
-        flexDirection: "row",
-        justifyContent: "space-around",
-        alignItems: "center",
-        paddingHorizontal: 40,
-        borderTopLeftRadius: 24,
-        borderTopRightRadius: 24,
-        elevation: 10,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: -2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 8,
-    },
-    navItem: {
-        flex: 1,
-        alignItems: "center",
-        justifyContent: "center",
-    },
-    activeNavIcon: {
-        backgroundColor: "#C67C4E",
-        width: 50,
-        height: 50,
-        borderRadius: 12,
-        justifyContent: "center",
-        alignItems: "center",
-    },
 });
+

@@ -40,9 +40,9 @@ export default function CoffeeSignUpScreen() {
       setErrorMsg(error.message);
     } else {
       if (mode === "signUp") {
-        router.push("/(tabs)/home");
+        router.replace("/(tabs)/home");
       } else {
-        router.push("/(auth)/setNewPass");
+        router.replace("/(auth)/setNewPass");
       }
     }
   };

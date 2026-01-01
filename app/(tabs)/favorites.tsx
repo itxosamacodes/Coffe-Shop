@@ -1,18 +1,17 @@
 import { Ionicons } from "@expo/vector-icons";
+import { Image } from "expo-image";
 import { router } from "expo-router";
 import React from "react";
 import {
     FlatList,
-    Image,
     StyleSheet,
     Text,
     TouchableOpacity,
     View,
 } from "react-native";
 import {
-    responsiveFontSize,
     responsiveHeight,
-    responsiveWidth,
+    responsiveWidth
 } from "react-native-responsive-dimensions";
 import { useFavorites } from "../../context/FavoritesContext";
 
@@ -32,7 +31,19 @@ const FavoritesScreen = () => {
                 }
             })}
         >
-            <Image source={item.image} style={styles.cardImage} />
+            <Image
+                source={
+                    typeof item.image === "number"
+                        ? item.image
+                        : typeof item.image === "string" && !isNaN(Number(item.image))
+                            ? Number(item.image)
+                            : { uri: item.image }
+                }
+                style={styles.cardImage}
+                contentFit="cover"
+                cachePolicy="memory-disk"
+                transition={0}
+            />
             <View style={styles.cardInfo}>
                 <Text style={styles.cardTitle}>{item.name}</Text>
                 <Text style={styles.cardSubtitle}>{item.subTitle}</Text>
@@ -74,23 +85,6 @@ const FavoritesScreen = () => {
                 }
             />
 
-            {/* Bottom Nav */}
-            <View style={styles.bottomNav}>
-                <TouchableOpacity style={styles.navItem} onPress={() => router.push("/(tabs)/home")}>
-                    <Ionicons name="home-outline" size={24} color="#8D8D8D" />
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.navItem}>
-                    <View style={styles.activeNavIcon}>
-                        <Ionicons name="heart" size={24} color="#ffffff" />
-                    </View>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.navItem} onPress={() => router.push("/(tabs)/orders")}>
-                    <Ionicons name="bag-outline" size={24} color="#8D8D8D" />
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.navItem} onPress={() => router.push("/(tabs)/activity")}>
-                    <Ionicons name="notifications-outline" size={24} color="#8D8D8D" />
-                </TouchableOpacity>
-            </View>
         </View>
     );
 };
@@ -195,36 +189,5 @@ const styles = StyleSheet.create({
         fontWeight: "700",
         fontSize: 16,
     },
-    bottomNav: {
-        position: "absolute",
-        bottom: 0,
-        left: 0,
-        right: 0,
-        height: 70,
-        backgroundColor: "#ffffff",
-        flexDirection: "row",
-        justifyContent: "space-around",
-        alignItems: "center",
-        paddingHorizontal: 40,
-        borderTopLeftRadius: 24,
-        borderTopRightRadius: 24,
-        elevation: 10,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: -2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 8,
-    },
-    navItem: {
-        flex: 1,
-        alignItems: "center",
-        justifyContent: "center",
-    },
-    activeNavIcon: {
-        backgroundColor: "#C67C4E",
-        width: 50,
-        height: 50,
-        borderRadius: 12,
-        justifyContent: "center",
-        alignItems: "center",
-    },
 });
+

@@ -24,6 +24,11 @@ import {
 } from "react-native-responsive-dimensions";
 import { supabase } from "../../utils/supabase";
 
+const SHOP_LOCATION = {
+    latitude: 31.5204,
+    longitude: 74.3587,
+};
+
 const Checkout = () => {
     const params = useLocalSearchParams();
 
@@ -37,14 +42,30 @@ const Checkout = () => {
     const [loading, setLoading] = useState(false);
     const [locationLoading, setLocationLoading] = useState(false);
     const [quantity, setQuantity] = useState(1);
+    const [deliveryFee, setDeliveryFee] = useState(0);
     const [userInfo, setUserInfo] = useState({
         name: "",
         email: "",
         address: initialLocation,
         phone: "",
     });
+    const [coords, setCoords] = useState<{ latitude: number | null, longitude: number | null }>({
+        latitude: null,
+        longitude: null,
+    });
 
     const parsedPrice = parseFloat(coffePriceRaw) || 0;
+
+    const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+        const R = 6371; // km
+        const dLat = (lat2 - lat1) * (Math.PI / 180);
+        const dLon = (lon2 - lon1) * (Math.PI / 180);
+        const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
+            Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return R * c;
+    };
 
     const getCurrentLocation = useCallback(async () => {
         setLocationLoading(true);
@@ -84,6 +105,16 @@ const Checkout = () => {
 
                 console.log("[DEBUG] Formatted address:", formatted);
                 setUserInfo((prev) => ({ ...prev, address: formatted || prev.address }));
+                setCoords({ latitude: pos.coords.latitude, longitude: pos.coords.longitude });
+
+                // Calculate delivery fee: $0.2 per km
+                const distance = calculateDistance(
+                    SHOP_LOCATION.latitude,
+                    SHOP_LOCATION.longitude,
+                    pos.coords.latitude,
+                    pos.coords.longitude
+                );
+                setDeliveryFee(parseFloat((distance * 0.2).toFixed(2)));
             } else {
                 console.log("[DEBUG] No address returned from geocoder.");
                 Alert.alert("Location Warning", "Position found, but could not determine a specific street address.");
@@ -110,32 +141,37 @@ const Checkout = () => {
                 throw new Error("You must be logged in to place an order");
             }
 
-            const totalAmount = (parsedPrice * quantity + 1.0).toFixed(2);
+            const totalAmount = (parsedPrice * quantity + deliveryFee).toFixed(2);
 
-            const { error } = await supabase.from("orders").insert([
+            const { data: orderData, error } = await supabase.from("orders").insert([
                 {
                     item_name: coffeName,
                     quantity: quantity,
                     total_price: totalAmount,
+                    delivery_fee: deliveryFee,
                     delivery_type: "Deliver",
                     customer_name: userInfo.name,
                     customer_email: userInfo.email,
                     customer_phone: userInfo.phone,
                     delivery_address: userInfo.address,
+                    customer_lat: coords.latitude,
+                    customer_lng: coords.longitude,
                     status: "pending",
                     user_id: user.id
                 },
-            ]);
+            ]).select();
 
             if (error) throw error;
+
+            const orderId = orderData?.[0]?.id;
 
             setModalVisible(false);
             Alert.alert("Success", "Your order has been placed successfully!", [
                 {
                     text: "Track Order",
                     onPress: () => router.push({
-                        pathname: "/(tabs)/delivery",
-                        params: { address: userInfo.address }
+                        pathname: "/order-tracking",
+                        params: { orderId: orderId }
                     })
                 },
             ]);
@@ -219,13 +255,13 @@ const Checkout = () => {
                         <Text style={styles.priceValue}>${(parsedPrice * quantity).toFixed(2)}</Text>
                     </View>
                     <View style={styles.priceRow}>
-                        <Text style={styles.priceLabel}>Delivery Charge</Text>
-                        <Text style={styles.priceValue}>$1.00</Text>
+                        <Text style={styles.priceLabel}>Delivery Charge ($0.2/km)</Text>
+                        <Text style={styles.priceValue}>${deliveryFee.toFixed(2)}</Text>
                     </View>
                     <View style={styles.divider} />
                     <View style={styles.priceRow}>
                         <Text style={styles.totalLabel}>Total Payment</Text>
-                        <Text style={styles.totalValue}>${(parsedPrice * quantity + 1.0).toFixed(2)}</Text>
+                        <Text style={styles.totalValue}>${(parsedPrice * quantity + deliveryFee).toFixed(2)}</Text>
                     </View>
                 </View>
             </ScrollView>
@@ -336,7 +372,7 @@ const Checkout = () => {
                     </View>
                     <View style={{ flex: 1, marginLeft: 12 }}>
                         <Text style={styles.paymentMethod}>Cash on Delivery</Text>
-                        <Text style={styles.paymentAmount}>Total: ${(parsedPrice * quantity + 1.0).toFixed(2)}</Text>
+                        <Text style={styles.paymentAmount}>Total: ${(parsedPrice * quantity + deliveryFee).toFixed(2)}</Text>
                     </View>
                     <Ionicons name="chevron-forward" size={18} color="#999" />
                 </View>

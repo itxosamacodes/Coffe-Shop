@@ -1,8 +1,10 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { router } from "expo-router";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
+    ActivityIndicator,
+    Alert,
     FlatList,
     StyleSheet,
     Text,
@@ -13,29 +15,91 @@ import {
     responsiveHeight,
     responsiveWidth
 } from "react-native-responsive-dimensions";
-
-const recentOrders = [
-    {
-        id: "1",
-        name: "Espresso",
-        subTitle: "With Deep Foam",
-        price: "4.53",
-        image: require("../../assets/ProductImage/cofe3.jpg"),
-        status: "Delivered",
-        date: "Today, 4:30 PM",
-    },
-    {
-        id: "2",
-        name: "Latte",
-        subTitle: "With Deep Foam",
-        price: "5.53",
-        image: require("../../assets/ProductImage/cofe1.png"),
-        status: "Processing",
-        date: "Today, 2:15 PM",
-    },
-];
+import { supabase } from "../../utils/supabase";
 
 const OrdersScreen = () => {
+    const [orders, setOrders] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        fetchOrders();
+
+        const subscription = supabase
+            .channel('orders_channel')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
+                fetchOrders();
+            })
+            .subscribe();
+
+        return () => {
+            subscription.unsubscribe();
+        };
+    }, []);
+
+    const fetchOrders = async () => {
+        setLoading(true);
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+            setLoading(false);
+            return;
+        }
+
+        const { data, error } = await supabase
+            .from('orders')
+            .select('*')
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false });
+
+        if (!error) setOrders(data || []);
+        setLoading(false);
+    };
+
+    const cancelOrder = async (orderId: string) => {
+        Alert.alert(
+            "Cancel Order",
+            "Are you sure you want to cancel this order?",
+            [
+                { text: "No", style: "cancel" },
+                {
+                    text: "Yes, Cancel",
+                    style: "destructive",
+                    onPress: async () => {
+                        const { error } = await supabase
+                            .from('orders')
+                            .update({ status: 'cancelled' })
+                            .eq('id', orderId);
+
+                        if (error) {
+                            Alert.alert("Error", "Could not cancel order");
+                        } else {
+                            fetchOrders();
+                        }
+                    }
+                }
+            ]
+        );
+    };
+
+    const getStatusColor = (status: string) => {
+        switch (status) {
+            case 'completed':
+            case 'delivered': return "#E8F5E9";
+            case 'cancelled':
+            case 'rejected': return "#FFEBEE";
+            default: return "#FFF3E0";
+        }
+    };
+
+    const getStatusTextColor = (status: string) => {
+        switch (status) {
+            case 'completed':
+            case 'delivered': return "#4CAF50";
+            case 'cancelled':
+            case 'rejected': return "#F44336";
+            default: return "#FF9800";
+        }
+    };
+
     return (
         <View style={styles.container}>
             {/* Header */}
@@ -47,44 +111,84 @@ const OrdersScreen = () => {
                 <View style={{ width: 44 }} />
             </View>
 
-            <FlatList
-                data={recentOrders}
-                keyExtractor={(item) => item.id}
-                contentContainerStyle={styles.listContent}
-                renderItem={({ item }) => (
-                    <TouchableOpacity style={styles.orderCard}>
-                        <Image source={item.image} style={styles.orderImage} contentFit="cover" transition={200} />
-                        <View style={styles.orderInfo}>
-                            <View style={styles.topRow}>
-                                <Text style={styles.orderName}>{item.name}</Text>
-                                <View style={[
-                                    styles.statusBadge,
-                                    { backgroundColor: item.status === "Delivered" ? "#E8F5E9" : "#FFF3E0" }
-                                ]}>
-                                    <Text style={[
-                                        styles.statusText,
-                                        { color: item.status === "Delivered" ? "#4CAF50" : "#FF9800" }
-                                    ]}>{item.status}</Text>
+            {loading && orders.length === 0 ? (
+                <View style={styles.emptyState}>
+                    <ActivityIndicator size="large" color="#C67C4E" />
+                </View>
+            ) : (
+                <FlatList
+                    data={orders}
+                    keyExtractor={(item) => item.id}
+                    contentContainerStyle={styles.listContent}
+                    renderItem={({ item }) => (
+                        <TouchableOpacity
+                            style={styles.orderCard}
+                            onPress={() => {
+                                if (item.status === 'cancelled' || item.status === 'completed') return;
+
+                                let targetPath: any = "/order-tracking"; // Default for pending
+                                if (item.status === 'approved') {
+                                    targetPath = "/waiting-for-rider";
+                                } else if (['accepted', 'picked_up', 'delivered'].includes(item.status)) {
+                                    targetPath = "/(tabs)/delivery";
+                                }
+
+                                router.push({
+                                    pathname: targetPath,
+                                    params: { orderId: item.id }
+                                });
+                            }}
+                        >
+                            <View style={styles.orderIconBox}>
+                                <Ionicons name="cafe" size={32} color="#C67C4E" />
+                            </View>
+                            <View style={styles.orderInfo}>
+                                <View style={styles.topRow}>
+                                    <Text style={styles.orderName}>{item.item_name}</Text>
+                                    <View style={[
+                                        styles.statusBadge,
+                                        { backgroundColor: getStatusColor(item.status) }
+                                    ]}>
+                                        <Text style={[
+                                            styles.statusText,
+                                            { color: getStatusTextColor(item.status) }
+                                        ]}>{item.status.toUpperCase()}</Text>
+                                    </View>
+                                </View>
+                                <Text style={styles.orderDate}>
+                                    {new Date(item.created_at).toLocaleDateString()} {new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                </Text>
+                                <View style={styles.priceRow}>
+                                    <Text style={styles.orderPrice}>${item.total_price}</Text>
+                                    {(item.status === 'pending' || item.status === 'approved') ? (
+                                        <TouchableOpacity
+                                            style={styles.cancelBtn}
+                                            onPress={() => cancelOrder(item.id)}
+                                        >
+                                            <Text style={styles.cancelText}>Cancel</Text>
+                                        </TouchableOpacity>
+                                    ) : (
+                                        <TouchableOpacity
+                                            style={styles.reorderBtn}
+                                            onPress={() => router.push("/(tabs)/home")}
+                                        >
+                                            <Text style={styles.reorderText}>Reorder</Text>
+                                        </TouchableOpacity>
+                                    )}
                                 </View>
                             </View>
-                            <Text style={styles.orderDate}>{item.date}</Text>
-                            <View style={styles.priceRow}>
-                                <Text style={styles.orderPrice}>${item.price}</Text>
-                                <TouchableOpacity style={styles.reorderBtn}>
-                                    <Text style={styles.reorderText}>Reorder</Text>
-                                </TouchableOpacity>
-                            </View>
+                        </TouchableOpacity>
+                    )}
+                    ListEmptyComponent={
+                        <View style={styles.emptyState}>
+                            <Ionicons name="bag-outline" size={60} color="#ccc" />
+                            <Text style={styles.emptyText}>No orders yet</Text>
                         </View>
-                    </TouchableOpacity>
-                )}
-                ListEmptyComponent={
-                    <View style={styles.emptyState}>
-                        <Ionicons name="bag-outline" size={60} color="#ccc" />
-                        <Text style={styles.emptyText}>No orders yet</Text>
-                    </View>
-                }
-            />
-
+                    }
+                    onRefresh={fetchOrders}
+                    refreshing={loading}
+                />
+            )}
         </View>
     );
 };
@@ -132,15 +236,19 @@ const styles = StyleSheet.create({
         shadowRadius: 5,
         elevation: 2,
     },
-    orderImage: {
+    orderIconBox: {
         width: 80,
         height: 80,
         borderRadius: 12,
+        backgroundColor: "#F9F2ED",
+        alignItems: "center",
+        justifyContent: "center",
     },
     orderInfo: {
         flex: 1,
         marginLeft: 15,
         justifyContent: "space-between",
+        paddingVertical: 2,
     },
     topRow: {
         flexDirection: "row",
@@ -158,8 +266,8 @@ const styles = StyleSheet.create({
         borderRadius: 6,
     },
     statusText: {
-        fontSize: 10,
-        fontWeight: "700",
+        fontSize: 9,
+        fontWeight: "800",
     },
     orderDate: {
         fontSize: 12,
@@ -185,6 +293,18 @@ const styles = StyleSheet.create({
     },
     reorderText: {
         color: "white",
+        fontSize: 12,
+        fontWeight: "700",
+    },
+    cancelBtn: {
+        borderWidth: 1,
+        borderColor: "#F44336",
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 8,
+    },
+    cancelText: {
+        color: "#F44336",
         fontSize: 12,
         fontWeight: "700",
     },

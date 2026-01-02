@@ -18,7 +18,7 @@ export default function CoffeeSignUpScreen() {
   const [Loading, setLoading] = useState(false);
   const [ErrorMsg, setErrorMsg] = useState("");
   const [otp, setOtp] = useState("");
-  const { email, mode } = useLocalSearchParams();
+  const { email, mode, role } = useLocalSearchParams();
   const VarifyHandler = async () => {
     setErrorMsg("");
     if (!otp) {
@@ -40,7 +40,11 @@ export default function CoffeeSignUpScreen() {
       setErrorMsg(error.message);
     } else {
       if (mode === "signUp") {
-        router.replace("/(tabs)/home");
+        if (role === "rider") {
+          router.replace("/(auth)/pendingApproval");
+        } else {
+          router.replace("/(tabs)/home");
+        }
       } else {
         router.replace("/(auth)/setNewPass");
       }

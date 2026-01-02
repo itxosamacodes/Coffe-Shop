@@ -63,6 +63,21 @@ export default function CoffeeSignUpScreen() {
     if (error) {
       setErrorMsg(error.message);
     } else {
+      if (data.user) {
+        // Insert into coffee_lovers table
+        const { error: profileError } = await supabase.from("coffee_lovers").insert([
+          {
+            user_id: data.user.id,
+            full_name: fullName,
+            email: email,
+          },
+        ]);
+
+        if (profileError) {
+          console.error("Profile insertion error:", profileError.message);
+        }
+      }
+
       router.push({
         pathname: "/(auth)/varification",
         params: { email, mode: "signUp" },

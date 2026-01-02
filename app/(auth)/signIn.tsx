@@ -16,7 +16,7 @@ import {
 
 export default function CoffeeLoginScreen() {
   const [email, setEmail] = useState("itxosama.io@gmail.com");
-  const [password, setPassword] = useState("321321");
+  const [password, setPassword] = useState("123123");
   const [showPassword, setShowPassword] = useState(false);
   const [Loading, setLoading] = useState(false);
   const [ErrorMsg, setErrorMsg] = useState("");
@@ -29,15 +29,57 @@ export default function CoffeeLoginScreen() {
     }
 
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data: authData, error } = await supabase.auth.signInWithPassword({
       email: email,
       password: password,
     });
-    setLoading(false);
+
     if (error) {
+      setLoading(false);
       setErrorMsg(error.message);
-    } else {
-      router.replace("/(tabs)/home");
+      return;
+    }
+
+    if (authData.user) {
+      // Check if user is an admin
+      const { data: adminData, error: adminError } = await supabase
+        .from('coffee_lovers')
+        .select('role')
+        .eq('user_id', authData.user.id)
+        .single();
+
+      if (!adminError && adminData?.role === 'admin') {
+        setLoading(false);
+        router.replace("/(admin)/dashboard");
+        return;
+      }
+
+      // Check if user is a rider
+      const { data: riderData, error: riderError } = await supabase
+        .from('riders')
+        .select('status')
+        .eq('user_id', authData.user.id)
+        .single();
+
+      setLoading(false);
+
+      if (riderError && riderError.code !== 'PGRST116') { // PGRST116 is 'not found'
+        setErrorMsg(riderError.message);
+        return;
+      }
+
+      if (riderData) {
+        if (riderData.status === 'approved') {
+          router.replace("/(rider)/dashboard");
+        } else if (riderData.status === 'pending') {
+          router.replace("/(auth)/pendingApproval");
+        } else {
+          setErrorMsg("Your application was rejected. Please contact support.");
+        }
+      } else {
+        // User is a customer
+        router.replace("/(tabs)/home");
+      }
     }
   };
 

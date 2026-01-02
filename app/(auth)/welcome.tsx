@@ -59,7 +59,7 @@ const Welcome = () => {
           <TouchableOpacity
             style={styles.card}
             activeOpacity={0.7}
-            onPress={() => router.replace("/(auth)/signIn")}
+            onPress={() => router.replace("/(auth)/riderSignIn")}
           >
             <View style={styles.iconWrapper}>
               <View style={styles.iconContainer}>

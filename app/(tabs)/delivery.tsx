@@ -1,6 +1,5 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import BottomSheet, { BottomSheetView } from "@gorhom/bottom-sheet";
-import { Image } from "expo-image";
 import * as Location from "expo-location";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useMemo, useRef, useState } from "react";
@@ -288,7 +287,7 @@ const MapScreen = () => {
               <>
                 <Text style={styles.statusTitle}>
                   {orderStatus === 'picked_up' ? "🚴 Rider is on the way with your coffee!" :
-                    orderStatus === 'accepted' ? "✅ Rider accepted! Heading to the shop..." :
+                    orderStatus === 'accepted' ? " Rider accepted! Heading to the shop..." :
                       orderStatus === 'delivered' ? "📍 Rider has arrived! Please confirm receipt." : "☕ Preparing your coffee..."}
                 </Text>
 
@@ -401,8 +400,20 @@ const styles = StyleSheet.create({
     color: '#C67C4E',
     fontWeight: 'bold',
   },
-  receiveBtn: { backgroundColor: "#C67C4E", width: "100%", height: 50, borderRadius: 14, justifyContent: "center", alignItems: "center", marginTop: 20 },
-  receiveBtnText: { color: "white", fontSize: 16, fontWeight: "bold" }
+  receiveBtn: {
+    backgroundColor: "#C67C4E",
+    width: "100%",
+    height: 50,
+    borderRadius: 14,
+    justifyContent: "center",
+    alignItems: "center",
+    marginTop: 20
+  },
+  receiveBtnText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "bold"
+  }
 });
 
 export default MapScreen;

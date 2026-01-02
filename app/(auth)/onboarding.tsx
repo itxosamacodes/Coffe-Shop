@@ -1,9 +1,9 @@
 import { Image } from "expo-image";
 import { router } from "expo-router";
-import React, { useState, useRef } from "react";
+import React, { useRef, useState } from "react";
 import {
     Dimensions,
-    ScrollView, // Import ScrollView type
+    ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,

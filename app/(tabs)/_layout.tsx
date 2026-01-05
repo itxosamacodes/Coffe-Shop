@@ -1,56 +1,77 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
 import React from "react";
-import { StyleSheet, View } from "react-native";
+import { StyleSheet } from "react-native";
+import {
+    responsiveFontSize,
+    responsiveHeight,
+} from "react-native-responsive-dimensions";
+import { useTheme } from "../../context/ThemeContext";
 
 export default function rootlayout() {
+    const { theme } = useTheme();
+
     return (
         <Tabs
             screenOptions={{
                 headerShown: false,
-                tabBarStyle: styles.tabBar,
-                tabBarShowLabel: false,
-                tabBarActiveTintColor: "#C67C4E",
-                tabBarInactiveTintColor: "#8D8D8D",
+                tabBarStyle: [styles.tabBar, { backgroundColor: theme.tabBar, borderTopColor: theme.border }],
+                tabBarShowLabel: true,
+                tabBarActiveTintColor: theme.primary,
+                tabBarInactiveTintColor: theme.tabInactive,
+                tabBarLabelStyle: styles.tabBarLabel,
+                tabBarHideOnKeyboard: true,
             }}
         >
             <Tabs.Screen
                 name="home"
                 options={{
+                    title: "Home",
                     tabBarIcon: ({ focused, color }) => (
-                        <View style={focused ? styles.activeIconWrap : null}>
-                            <Ionicons name={focused ? "home" : "home-outline"} size={24} color={focused ? "white" : color} />
-                        </View>
+                        <Ionicons
+                            name={focused ? "home" : "home-outline"}
+                            size={24}
+                            color={color}
+                        />
                     ),
                 }}
             />
             <Tabs.Screen
                 name="favorites"
                 options={{
+                    title: "Favorites",
                     tabBarIcon: ({ focused, color }) => (
-                        <View style={focused ? styles.activeIconWrap : null}>
-                            <Ionicons name={focused ? "heart" : "heart-outline"} size={24} color={focused ? "white" : color} />
-                        </View>
+                        <Ionicons
+                            name={focused ? "heart" : "heart-outline"}
+                            size={24}
+                            color={color}
+                        />
                     ),
                 }}
             />
             <Tabs.Screen
                 name="orders"
                 options={{
+                    title: "Orders",
                     tabBarIcon: ({ focused, color }) => (
-                        <View style={focused ? styles.activeIconWrap : null}>
-                            <Ionicons name={focused ? "bag" : "bag-outline"} size={24} color={focused ? "white" : color} />
-                        </View>
+                        <Ionicons
+                            name={focused ? "bag" : "bag-outline"}
+                            size={24}
+                            color={color}
+                        />
                     ),
                 }}
             />
             <Tabs.Screen
                 name="activity"
                 options={{
+                    title: "Activity",
                     tabBarIcon: ({ focused, color }) => (
-                        <View style={focused ? styles.activeIconWrap : null}>
-                            <Ionicons name={focused ? "notifications" : "notifications-outline"} size={24} color={focused ? "white" : color} />
-                        </View>
+                        <Ionicons
+                            name={focused ? "notifications" : "notifications-outline"}
+                            size={24}
+                            color={color}
+                        />
                     ),
                 }}
             />
@@ -82,25 +103,15 @@ export default function rootlayout() {
 const styles = StyleSheet.create({
     tabBar: {
         position: 'absolute',
-        height: 70,
-        backgroundColor: '#ffffff',
-        borderTopLeftRadius: 24,
-        borderTopRightRadius: 24,
-        borderTopWidth: 0,
-        elevation: 10,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: -2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 8,
-        paddingBottom: 10,
-        paddingHorizontal: 20,
+        height: responsiveHeight(9),
+        borderTopWidth: 1,
+        elevation: 0,
+        paddingBottom: 15,
+        paddingTop: 10,
     },
-    activeIconWrap: {
-        backgroundColor: '#C67C4E',
-        width: 50,
-        height: 50,
-        borderRadius: 50,
-        justifyContent: 'center',
-        alignItems: 'center',
+    tabBarLabel: {
+        fontSize: responsiveFontSize(1.4),
+        fontWeight: "600",
+        marginBottom: 2,
     }
 });

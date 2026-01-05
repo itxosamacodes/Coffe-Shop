@@ -17,7 +17,8 @@ create table public.orders (
   customer_phone text,
   delivery_address text,
   customer_lat numeric,
-
+  customer_lng numeric,
+  customer_city text
 );
 
 -- Create the completed_orders table (archive for finished orders)

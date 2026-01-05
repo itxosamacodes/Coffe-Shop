@@ -12,14 +12,15 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
-import MapView, { Marker, Polyline } from "react-native-maps";
+import MapView, { Marker } from "react-native-maps";
 import {
     responsiveFontSize,
     responsiveHeight,
     responsiveWidth,
 } from "react-native-responsive-dimensions";
-import { supabase } from "../../utils/supabase";
 import { RoutePolyline } from "../../components/RoutePolyline";
+import { riderService } from "../../services/riderService";
+import { supabase } from "../../utils/supabase";
 
 export default function RiderDashboard() {
     const [orders, setOrders] = useState<any[]>([]);
@@ -86,28 +87,12 @@ export default function RiderDashboard() {
     };
 
     const fetchStats = async () => {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
-
-        const { data: completed } = await supabase
-            .from('completed_orders')
-            .select('total_price, completed_at')
-            .eq('rider_id', user.id);
-
-        if (completed) {
-            const now = new Date();
-            const startOfDay = new Date(now.setHours(0, 0, 0, 0));
-            const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay()));
-            const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-
-            let daily = 0, weekly = 0, monthly = 0;
-            completed.forEach(order => {
-                const date = new Date(order.completed_at);
-                if (date >= startOfDay) daily += Number(order.total_price);
-                if (date >= startOfWeek) weekly += Number(order.total_price);
-                if (date >= startOfMonth) monthly += Number(order.total_price);
-            });
-            setStats({ daily, weekly, monthly });
+        try {
+            const user = await riderService.getRiderUser();
+            const statsData = await riderService.fetchStats(user.id);
+            setStats(statsData);
+        } catch (error) {
+            console.error("Stats Error:", error);
         }
     };
 
@@ -120,44 +105,25 @@ export default function RiderDashboard() {
 
     const fetchOrders = async () => {
         setLoading(true);
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
-            setLoading(false);
-            return;
+        try {
+            const user = await riderService.getRiderUser();
+            const data = await riderService.fetchActiveOrders(user.id);
+            setOrders(data);
+        } catch (error) {
+            console.error("Fetch Orders Error:", error);
         }
-
-        const threeHoursAgo = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString();
-
-        // Query logic:
-        // 1. Orders created within the last 3 hours
-        // 2. Status is 'approved' (available for any rider) 
-        // 3. OR status is 'accepted'/'picked_up'/'delivered' AND assigned to THIS rider
-        const { data, error } = await supabase
-            .from('orders')
-            .select('*')
-            .gte('created_at', threeHoursAgo)
-            .or(`status.eq.approved,and(rider_id.eq.${user.id},status.in.(accepted,picked_up,delivered))`)
-            .order('created_at', { ascending: false });
-
-        if (!error) setOrders(data || []);
-        else console.error("Fetch Orders Error:", error);
         setLoading(false);
     };
 
     const updateOrderStatus = async (orderId: string, newStatus: string) => {
-        const { data: { user } } = await supabase.auth.getUser();
+        try {
+            const user = await riderService.getRiderUser();
+            if (newStatus === 'accepted') {
+                await riderService.acceptOrder(user.id, orderId);
+            } else {
+                await riderService.updateStatus(orderId, newStatus);
+            }
 
-        const updateData: any = { status: newStatus };
-        if (newStatus === 'accepted') updateData.rider_id = user?.id;
-
-        const { error } = await supabase
-            .from('orders')
-            .update(updateData)
-            .eq('id', orderId);
-
-        if (error) {
-            Alert.alert("Error", error.message);
-        } else {
             if (newStatus === 'delivered') {
                 Alert.alert("Delivered!", "Waiting for customer to confirm receipt.");
             }
@@ -165,6 +131,8 @@ export default function RiderDashboard() {
             if (selectedOrder && selectedOrder.id === orderId) {
                 setSelectedOrder({ ...selectedOrder, status: newStatus });
             }
+        } catch (error: any) {
+            Alert.alert("Order Update Failed", error.message || "Something went wrong");
         }
     };
 

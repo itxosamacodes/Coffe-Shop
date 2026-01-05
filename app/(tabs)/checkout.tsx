@@ -22,12 +22,9 @@ import {
     responsiveHeight,
     responsiveWidth
 } from "react-native-responsive-dimensions";
+import { AVAILABLE_CITIES, getCafeLocation } from "../../utils/cafeLocations";
 import { supabase } from "../../utils/supabase";
 
-const SHOP_LOCATION = {
-    latitude: 31.5204,
-    longitude: 74.3587,
-};
 
 const Checkout = () => {
     const params = useLocalSearchParams();
@@ -42,6 +39,7 @@ const Checkout = () => {
     const [loading, setLoading] = useState(false);
     const [locationLoading, setLocationLoading] = useState(false);
     const [quantity, setQuantity] = useState(1);
+    const [selectedCity, setSelectedCity] = useState(AVAILABLE_CITIES[0]);
     const [deliveryFee, setDeliveryFee] = useState(0);
     const [userInfo, setUserInfo] = useState({
         name: "",
@@ -107,10 +105,11 @@ const Checkout = () => {
                 setUserInfo((prev) => ({ ...prev, address: formatted || prev.address }));
                 setCoords({ latitude: pos.coords.latitude, longitude: pos.coords.longitude });
 
-                // Calculate delivery fee: $0.2 per km
+                // Calculate delivery fee: $0.2 per km from selected city's cafe
+                const cafeLocation = getCafeLocation(selectedCity);
                 const distance = calculateDistance(
-                    SHOP_LOCATION.latitude,
-                    SHOP_LOCATION.longitude,
+                    cafeLocation.latitude,
+                    cafeLocation.longitude,
                     pos.coords.latitude,
                     pos.coords.longitude
                 );
@@ -156,6 +155,7 @@ const Checkout = () => {
                     delivery_address: userInfo.address,
                     customer_lat: coords.latitude,
                     customer_lng: coords.longitude,
+                    customer_city: selectedCity,
                     status: "pending",
                     user_id: user.id
                 },
@@ -319,6 +319,27 @@ const Checkout = () => {
                                     value={userInfo.phone}
                                     onChangeText={(text) => setUserInfo(p => ({ ...p, phone: text }))}
                                 />
+                            </View>
+
+                            <Text style={styles.inputLabel}>Select City</Text>
+                            <View style={styles.cityPickerRow}>
+                                {AVAILABLE_CITIES.map((city) => (
+                                    <TouchableOpacity
+                                        key={city}
+                                        style={[
+                                            styles.cityOption,
+                                            selectedCity === city && styles.cityOptionSelected
+                                        ]}
+                                        onPress={() => setSelectedCity(city)}
+                                    >
+                                        <Text style={[
+                                            styles.cityOptionText,
+                                            selectedCity === city && styles.cityOptionTextSelected
+                                        ]}>
+                                            {city}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
                             </View>
 
                             <View style={styles.addressLabelRow}>
@@ -673,6 +694,32 @@ const styles = StyleSheet.create({
         color: "white",
         fontSize: 18,
         fontWeight: "700",
+    },
+    cityPickerRow: {
+        flexDirection: "row",
+        gap: 10,
+        marginTop: 8,
+    },
+    cityOption: {
+        flex: 1,
+        paddingVertical: 12,
+        borderRadius: 12,
+        backgroundColor: "#F7F7F7",
+        alignItems: "center",
+        borderWidth: 1,
+        borderColor: "#EEE",
+    },
+    cityOptionSelected: {
+        backgroundColor: "#F9F2ED",
+        borderColor: "#C67C4E",
+    },
+    cityOptionText: {
+        fontSize: 14,
+        fontWeight: "600",
+        color: "#666",
+    },
+    cityOptionTextSelected: {
+        color: "#C67C4E",
     },
 });
 

@@ -3,16 +3,25 @@ import BottomSheet, { BottomSheetView } from "@gorhom/bottom-sheet";
 import * as Location from "expo-location";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Alert, Linking, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import {
+  ActivityIndicator,
+  Alert,
+  Linking,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import MapView, { Marker, Polyline } from "react-native-maps";
+import Animated, { FadeIn, Layout } from "react-native-reanimated";
+import {
+  responsiveFontSize,
+  responsiveHeight,
+  responsiveWidth,
+} from "react-native-responsive-dimensions";
+import { CafeLocation, getCafeLocation } from "../../utils/cafeLocations";
 import { supabase } from "../../utils/supabase";
-
-// Shop location: 31.5204 N, 74.3587 E (Matched with Rider Dashboard)
-const SHOP_LOCATION = {
-  latitude: 31.5204,
-  longitude: 74.3587,
-};
 
 const MapScreen = () => {
   const params = useLocalSearchParams();
@@ -23,14 +32,33 @@ const MapScreen = () => {
   const mapRef = useRef<MapView>(null);
   const snapPoints = useMemo(() => ["20%", "35%"], []);
 
-  const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
-  const [riderLocation, setRiderLocation] = useState<{ latitude: number; longitude: number } | null>(null);
-  const [riderInfo, setRiderInfo] = useState<{ name: string; phone: string } | null>(null);
-  const [orderDetails, setOrderDetails] = useState<{ item_name: string; quantity: number; total_price: number } | null>(null);
+  const [userLocation, setUserLocation] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
+  const [riderLocation, setRiderLocation] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
+  const [riderInfo, setRiderInfo] = useState<{
+    name: string;
+    phone: string;
+  } | null>(null);
+  const [orderDetails, setOrderDetails] = useState<{
+    item_name: string;
+    quantity: number;
+    total_price: number;
+  } | null>(null);
   const [orderStatus, setOrderStatus] = useState<string>("pending");
   const [distance, setDistance] = useState<string>("Calculating...");
+  const [eta, setEta] = useState<string>("...");
   const [loading, setLoading] = useState(true);
-  const [mapType, setMapType] = useState<"standard" | "satellite" | "hybrid">("standard");
+  const [mapType, setMapType] = useState<"standard" | "satellite" | "hybrid">(
+    "standard"
+  );
+  const [cafeLocation, setCafeLocation] = useState<CafeLocation>(
+    getCafeLocation()
+  );
 
   useEffect(() => {
     fetchUserLocation();
@@ -46,9 +74,9 @@ const MapScreen = () => {
 
   const fetchOrderDetails = async () => {
     const { data: order, error } = await supabase
-      .from('orders')
-      .select('*')
-      .eq('id', orderId)
+      .from("orders")
+      .select("*")
+      .eq("id", orderId)
       .single();
 
     if (order) {
@@ -56,12 +84,12 @@ const MapScreen = () => {
       setOrderDetails({
         item_name: order.item_name,
         quantity: order.quantity,
-        total_price: Number(order.total_price)
+        total_price: Number(order.total_price),
       });
       if (order.rider_lat && order.rider_lng) {
         setRiderLocation({
           latitude: Number(order.rider_lat),
-          longitude: Number(order.rider_lng)
+          longitude: Number(order.rider_lng),
         });
       }
 
@@ -69,8 +97,13 @@ const MapScreen = () => {
         // Use stored delivery location instead of current phone location for the marker
         setUserLocation({
           latitude: Number(order.customer_lat),
-          longitude: Number(order.customer_lng)
+          longitude: Number(order.customer_lng),
         });
+      }
+
+      // Set cafe location based on customer's city
+      if (order.customer_city) {
+        setCafeLocation(getCafeLocation(order.customer_city));
       }
 
       if (order.rider_id) {
@@ -81,15 +114,15 @@ const MapScreen = () => {
 
   const fetchRiderInfo = async (riderUserId: string) => {
     const { data: rider, error } = await supabase
-      .from('riders')
-      .select('full_name, phone')
-      .eq('user_id', riderUserId)
+      .from("riders")
+      .select("full_name, phone")
+      .eq("user_id", riderUserId)
       .single();
 
     if (rider) {
       setRiderInfo({
         name: rider.full_name,
-        phone: rider.phone
+        phone: rider.phone,
       });
     }
   };
@@ -97,24 +130,28 @@ const MapScreen = () => {
   const subscribeToOrder = () => {
     const subscription = supabase
       .channel(`order_tracking_${orderId}`)
-      .on('postgres_changes', {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'orders',
-        filter: `id=eq.${orderId}`
-      }, (payload) => {
-        const newOrder = payload.new;
-        setOrderStatus(newOrder.status);
-        if (newOrder.rider_id) {
-          fetchRiderInfo(newOrder.rider_id);
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "orders",
+          filter: `id=eq.${orderId}`,
+        },
+        (payload) => {
+          const newOrder = payload.new;
+          setOrderStatus(newOrder.status);
+          if (newOrder.rider_id) {
+            fetchRiderInfo(newOrder.rider_id);
+          }
+          if (newOrder.rider_lat && newOrder.rider_lng) {
+            setRiderLocation({
+              latitude: Number(newOrder.rider_lat),
+              longitude: Number(newOrder.rider_lng),
+            });
+          }
         }
-        if (newOrder.rider_lat && newOrder.rider_lng) {
-          setRiderLocation({
-            latitude: Number(newOrder.rider_lat),
-            longitude: Number(newOrder.rider_lng)
-          });
-        }
-      })
+      )
       .subscribe();
 
     return () => {
@@ -123,36 +160,53 @@ const MapScreen = () => {
   };
 
   const handleReceived = async () => {
-    const { data: order } = await supabase.from('orders').select('*').eq('id', orderId).single();
+    const { data: order } = await supabase
+      .from("orders")
+      .select("*")
+      .eq("id", orderId)
+      .single();
     if (!order) return;
 
     // 1. Mark as completed
-    await supabase.from('orders').update({ status: 'completed' }).eq('id', orderId);
+    await supabase
+      .from("orders")
+      .update({ status: "completed" })
+      .eq("id", orderId);
 
     // 2. Archive to completed_orders
-    const { error: archiveError } = await supabase.from('completed_orders').insert({
-      order_id: orderId,
-      rider_id: order.rider_id,
-      user_id: order.user_id,
-      item_name: order.item_name,
-      total_price: order.total_price
-    });
+    const { error: archiveError } = await supabase
+      .from("completed_orders")
+      .insert({
+        order_id: orderId,
+        rider_id: order.rider_id,
+        user_id: order.user_id,
+        item_name: order.item_name,
+        total_price: order.total_price,
+      });
 
     // 3. Update rider stats
     if (!archiveError && order.rider_id) {
       // Using increment logic via RPC or simple select/update
-      const { data: currentStats } = await supabase.from('rider_stats').select('*').eq('rider_id', order.rider_id).single();
+      const { data: currentStats } = await supabase
+        .from("rider_stats")
+        .select("*")
+        .eq("rider_id", order.rider_id)
+        .single();
       if (currentStats) {
-        await supabase.from('rider_stats').update({
-          total_earnings: Number(currentStats.total_earnings) + Number(order.total_price),
-          total_deliveries: currentStats.total_deliveries + 1,
-          last_updated: new Date()
-        }).eq('rider_id', order.rider_id);
+        await supabase
+          .from("rider_stats")
+          .update({
+            total_earnings:
+              Number(currentStats.total_earnings) + Number(order.total_price),
+            total_deliveries: currentStats.total_deliveries + 1,
+            last_updated: new Date(),
+          })
+          .eq("rider_id", order.rider_id);
       } else {
-        await supabase.from('rider_stats').insert({
+        await supabase.from("rider_stats").insert({
           rider_id: order.rider_id,
           total_earnings: order.total_price,
-          total_deliveries: 1
+          total_deliveries: 1,
         });
       }
     }
@@ -162,12 +216,22 @@ const MapScreen = () => {
   };
 
   // Haversine distance
-  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+  const calculateDistance = (
+    lat1: number,
+    lon1: number,
+    lat2: number,
+    lon2: number
+  ) => {
     if (!lat1 || !lon1 || !lat2 || !lon2) return "0.00";
     const R = 6371;
     const dLat = (lat2 - lat1) * (Math.PI / 180);
     const dLon = (lon2 - lon1) * (Math.PI / 180);
-    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * (Math.PI / 180)) *
+      Math.cos(lat2 * (Math.PI / 180)) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return (R * c).toFixed(2);
   };
@@ -175,14 +239,17 @@ const MapScreen = () => {
   const fetchUserLocation = async () => {
     try {
       let { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
+      if (status !== "granted") {
         setLoading(false);
         return;
       }
       let location = await Location.getCurrentPositionAsync({});
-      const userCoords = { latitude: location.coords.latitude, longitude: location.coords.longitude };
+      const userCoords = {
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+      };
       // Only set user location if not already set by order details
-      setUserLocation(prev => prev || userCoords);
+      setUserLocation((prev) => prev || userCoords);
       setLoading(false);
     } catch (error) {
       setLoading(false);
@@ -193,46 +260,96 @@ const MapScreen = () => {
     if (userLocation) {
       let dist;
       if (riderLocation) {
-        dist = calculateDistance(riderLocation.latitude, riderLocation.longitude, userLocation.latitude, userLocation.longitude);
+        dist = calculateDistance(
+          riderLocation.latitude,
+          riderLocation.longitude,
+          userLocation.latitude,
+          userLocation.longitude
+        );
       } else {
-        dist = calculateDistance(SHOP_LOCATION.latitude, SHOP_LOCATION.longitude, userLocation.latitude, userLocation.longitude);
+        dist = calculateDistance(
+          cafeLocation.latitude,
+          cafeLocation.longitude,
+          userLocation.latitude,
+          userLocation.longitude
+        );
       }
       setDistance(`${dist} km`);
+      // ETA calculation: dist / 20kmh * 60 min/h
+      const minutes = Math.ceil((Number(dist) / 20) * 60);
+      setEta(`${minutes} min`);
     }
-  }, [userLocation, riderLocation]);
+  }, [userLocation, riderLocation, cafeLocation]);
 
   const locateSelf = () => {
     if (userLocation && mapRef.current) {
-      mapRef.current.animateToRegion({ ...userLocation, latitudeDelta: 0.01, longitudeDelta: 0.01 }, 1000);
+      mapRef.current.animateToRegion(
+        { ...userLocation, latitudeDelta: 0.01, longitudeDelta: 0.01 },
+        1000
+      );
     }
   };
 
-  /* New state for route coordinates */
-  const [routeCoordinates, setRouteCoordinates] = useState<{ latitude: number; longitude: number }[]>([]);
+  const fitMap = () => {
+    if (!mapRef.current) return;
+    const coords = [];
+    if (cafeLocation) coords.push(cafeLocation);
+    if (userLocation) coords.push(userLocation);
+    if (riderLocation) coords.push(riderLocation);
 
-  /* Import the routing utility at the top of the file - added here for context, ensure it's imported */
-  // import { getRoute } from "../../utils/routing"; 
+    if (coords.length >= 2) {
+      mapRef.current.fitToCoordinates(coords, {
+        edgePadding: { top: 100, right: 50, bottom: 300, left: 50 },
+        animated: true,
+      });
+    }
+  };
 
   useEffect(() => {
-    /* Fetch route whenever rider or user location changes */
+    if (!loading && (userLocation || riderLocation)) {
+      fitMap();
+    }
+  }, [loading, userLocation, riderLocation, orderStatus]);
+
+  /* New state for route coordinates */
+  const [routeCoordinates, setRouteCoordinates] = useState<
+    { latitude: number; longitude: number }[]
+  >([]);
+
+  useEffect(() => {
     const updateRoute = async () => {
       let start, end;
 
-      if (riderLocation) start = riderLocation;
-      else start = SHOP_LOCATION;
+      // Logic:
+      // 1. Pending/Approved -> Cafe to User
+      // 2. Accepted -> Rider to Cafe
+      // 3. Picked Up/Delivered -> Rider to User
 
-      if (userLocation) end = userLocation;
+      if (orderStatus === "pending" || orderStatus === "approved") {
+        start = cafeLocation;
+        end = userLocation;
+      } else if (orderStatus === "accepted") {
+        start = riderLocation || cafeLocation;
+        end = cafeLocation;
+      } else {
+        start = riderLocation || cafeLocation;
+        end = userLocation;
+      }
 
       if (start && end) {
-        /* Dynamically import or assume it is imported */
         const { getRoute } = require("../../utils/routing");
-        const coords = await getRoute(start.latitude, start.longitude, end.latitude, end.longitude);
+        const coords = await getRoute(
+          start.latitude,
+          start.longitude,
+          end.latitude,
+          end.longitude
+        );
         setRouteCoordinates(coords);
       }
     };
 
     updateRoute();
-  }, [riderLocation, userLocation]);
+  }, [riderLocation, userLocation, orderStatus, cafeLocation]);
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
@@ -242,25 +359,36 @@ const MapScreen = () => {
           style={styles.map}
           mapType={mapType}
           initialRegion={{
-            ...SHOP_LOCATION,
+            latitude: cafeLocation.latitude,
+            longitude: cafeLocation.longitude,
             latitudeDelta: 0.05,
             longitudeDelta: 0.05,
           }}
         >
-          <Marker coordinate={SHOP_LOCATION} title="Coffee Shop">
+          <Marker
+            coordinate={{
+              latitude: cafeLocation.latitude,
+              longitude: cafeLocation.longitude,
+            }}
+            title={cafeLocation.name}
+          >
             <View style={styles.markerContainer}>
-              <View style={styles.shopMarkerCircle}><Ionicons name="cafe" size={16} color="white" /></View>
+              <View style={styles.shopMarkerCircle}>
+                <Ionicons name="cafe" size={16} color="white" />
+              </View>
             </View>
           </Marker>
 
           {userLocation && (
-            <Marker coordinate={userLocation} title="You">
-              <View style={styles.userMarkerCircle}><Ionicons name="person" size={18} color="white" /></View>
+            <Marker coordinate={userLocation} title="Your Location">
+              <View style={styles.userMarkerCircle}>
+                <Ionicons name="person" size={18} color="white" />
+              </View>
             </Marker>
           )}
 
           {riderLocation && (
-            <Marker coordinate={riderLocation} title="Rider">
+            <Marker coordinate={riderLocation} title="Rider Location">
               <View style={styles.riderMarkerCircle}>
                 <MaterialCommunityIcons name="bike" size={24} color="white" />
               </View>
@@ -277,19 +405,43 @@ const MapScreen = () => {
         </MapView>
 
         <View style={styles.header}>
-          <TouchableOpacity style={styles.iconBox} onPress={() => router.back()}><Ionicons name="chevron-back" size={24} color="black" /></TouchableOpacity>
-          <TouchableOpacity style={styles.iconBox} onPress={locateSelf}><Ionicons name="locate" size={24} color="black" /></TouchableOpacity>
+          <TouchableOpacity
+            style={styles.iconBox}
+            onPress={() => router.back()}
+          >
+            <Ionicons name="chevron-back" size={24} color="black" />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.iconBox} onPress={locateSelf}>
+            <Ionicons name="locate" size={24} color="black" />
+          </TouchableOpacity>
         </View>
 
-        <BottomSheet ref={bottomSheetRef} snapPoints={snapPoints} enablePanDownToClose={false}>
-          <BottomSheetView style={styles.bttomBar}>
-            {loading ? <ActivityIndicator color="#C67C4E" /> : (
-              <>
-                <Text style={styles.statusTitle}>
-                  {orderStatus === 'picked_up' ? "🚴 Rider is on the way with your coffee!" :
-                    orderStatus === 'accepted' ? " Rider accepted! Heading to the shop..." :
-                      orderStatus === 'delivered' ? "📍 Rider has arrived! Please confirm receipt." : "☕ Preparing your coffee..."}
-                </Text>
+        <BottomSheet
+          ref={bottomSheetRef}
+          snapPoints={snapPoints}
+          enablePanDownToClose={false}
+          handleIndicatorStyle={{ backgroundColor: "#ddd", width: 40 }}
+        >
+          <BottomSheetView style={styles.bottomBar}>
+            {loading ? (
+              <ActivityIndicator color="#C67C4E" />
+            ) : (
+              <Animated.View entering={FadeIn.duration(500)}>
+                <Animated.View layout={Layout.springify()}>
+                  <Text style={styles.statusTitle}>
+                    {orderStatus === "delivered"
+                      ? "📍 Rider has arrived!"
+                      : orderStatus === "picked_up"
+                        ? "🚴 Rider is on the way!"
+                        : orderStatus === "accepted"
+                          ? "🏃 Preparing your delivery..."
+                          : orderStatus === "approved"
+                            ? "☕ Finding the best rider..."
+                            : orderStatus === "pending"
+                              ? "⏳ Waiting for approval..."
+                              : "✨ Your coffee is ready!"}
+                  </Text>
+                </Animated.View>
 
                 {orderDetails && (
                   <View style={styles.orderSummary}>
@@ -303,42 +455,91 @@ const MapScreen = () => {
                 )}
 
                 <View style={styles.progressRow}>
-                  <View style={[styles.dot, { backgroundColor: '#C67C4E' }]} />
-                  <View style={[styles.line, { backgroundColor: (orderStatus === 'accepted' || orderStatus === 'picked_up' || orderStatus === 'delivered') ? '#C67C4E' : '#eee' }]} />
-                  <View style={[styles.dot, { backgroundColor: (orderStatus === 'accepted' || orderStatus === 'picked_up' || orderStatus === 'delivered') ? '#C67C4E' : '#eee' }]} />
-                  <View style={[styles.line, { backgroundColor: orderStatus === 'delivered' ? '#C67C4E' : '#eee' }]} />
-                  <View style={[styles.dot, { backgroundColor: orderStatus === 'delivered' ? '#C67C4E' : '#eee' }]} />
+                  <View style={[styles.dot, { backgroundColor: "#C67C4E" }]} />
+                  <View
+                    style={[
+                      styles.line,
+                      {
+                        backgroundColor:
+                          ["accepted", "picked_up", "delivered"].includes(orderStatus)
+                            ? "#C67C4E"
+                            : "#eee",
+                      },
+                    ]}
+                  />
+                  <View
+                    style={[
+                      styles.dot,
+                      {
+                        backgroundColor:
+                          ["accepted", "picked_up", "delivered"].includes(orderStatus)
+                            ? "#C67C4E"
+                            : "#eee",
+                      },
+                    ]}
+                  />
+                  <View
+                    style={[
+                      styles.line,
+                      {
+                        backgroundColor:
+                          orderStatus === "delivered" ? "#C67C4E" : "#eee",
+                      },
+                    ]}
+                  />
+                  <View
+                    style={[
+                      styles.dot,
+                      {
+                        backgroundColor:
+                          orderStatus === "delivered" ? "#C67C4E" : "#eee",
+                      },
+                    ]}
+                  />
                 </View>
 
                 <View style={styles.profile}>
                   <View style={styles.iconContainer}>
-                    <MaterialCommunityIcons name="bike" size={32} color="#C67C4E" />
+                    <MaterialCommunityIcons
+                      name="bike"
+                      size={32}
+                      color="#C67C4E"
+                    />
                   </View>
-                  <View style={{ flex: 1, marginLeft: 15 }}>
-                    <Text style={styles.cardTitle}>{riderInfo ? riderInfo.name : "Courier Assigned"}</Text>
-                    <Text style={styles.cardSub}>{distance} {riderLocation ? "from you" : "to your door"}</Text>
+                  <View style={{ flex: 1, marginLeft: responsiveWidth(4) }}>
+                    <Text style={styles.cardTitle}>
+                      {riderInfo ? riderInfo.name : "Finding Courier..."}
+                    </Text>
+                    <Text style={styles.cardSub}>
+                      {distance} • {eta} {orderStatus === "accepted" ? "to cafe" : "away"}
+                    </Text>
                   </View>
                   <TouchableOpacity
                     style={styles.callBtn}
-                    onPress={() => riderInfo && Linking.openURL(`tel:${riderInfo.phone}`)}
+                    onPress={() =>
+                      riderInfo && Linking.openURL(`tel:${riderInfo.phone}`)
+                    }
                   >
                     <Ionicons name="call" size={20} color="#C67C4E" />
                   </TouchableOpacity>
                 </View>
 
-                {orderStatus === 'delivered' && (
-                  <TouchableOpacity style={styles.receiveBtn} onPress={handleReceived}>
+                {orderStatus === "delivered" && (
+                  <TouchableOpacity
+                    style={styles.receiveBtn}
+                    onPress={handleReceived}
+                  >
                     <Text style={styles.receiveBtnText}>Order Received</Text>
                   </TouchableOpacity>
                 )}
-              </>
+              </Animated.View>
             )}
           </BottomSheetView>
         </BottomSheet>
       </View>
     </GestureHandlerRootView>
   );
-}
+};
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
@@ -346,74 +547,144 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     position: "absolute",
-    top: 50,
-    width: '100%',
-    paddingHorizontal: 20,
-    justifyContent: 'space-between'
+    top: responsiveHeight(6),
+    width: "100%",
+    paddingHorizontal: responsiveWidth(5),
+    justifyContent: "space-between",
   },
   iconBox: {
-    height: 44,
-    width: 44,
+    height: 48,
+    width: 48,
     backgroundColor: "white",
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: 12,
+    borderRadius: 14,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
     elevation: 4,
   },
-  markerContainer: { alignItems: 'center' },
+  markerContainer: { alignItems: "center" },
   shopMarkerCircle: {
-    width: 32, height: 32, borderRadius: 16, backgroundColor: '#C67C4E', borderWidth: 2, borderColor: 'white', alignItems: 'center', justifyContent: 'center'
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#C67C4E",
+    borderWidth: 2,
+    borderColor: "white",
+    alignItems: "center",
+    justifyContent: "center",
   },
   userMarkerCircle: {
-    width: 32, height: 32, borderRadius: 16, backgroundColor: '#2F2D2C', alignItems: 'center', justifyContent: 'center'
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#2F2D2C",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: "white",
   },
   riderMarkerCircle: {
-    width: 40, height: 40, borderRadius: 20, backgroundColor: '#C67C4E', alignItems: 'center', justifyContent: 'center', elevation: 5
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "#C67C4E",
+    alignItems: "center",
+    justifyContent: "center",
+    elevation: 8,
+    borderWidth: 2,
+    borderColor: "white",
   },
-  bttomBar: { padding: 20, alignItems: "center" },
-  statusTitle: { fontSize: 20, fontWeight: "bold", color: "#2F2D2C", marginBottom: 15 },
-  progressRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 25 },
-  dot: { width: 12, height: 12, borderRadius: 6 },
-  line: { width: 60, height: 3, marginHorizontal: 5 },
-  profile: { flexDirection: "row", alignItems: "center", padding: 15, borderRadius: 16, backgroundColor: "#fafafa", width: "100%" },
-  iconContainer: { width: 50, height: 50, borderRadius: 12, backgroundColor: '#F9F2ED', alignItems: 'center', justifyContent: 'center' },
-  cardTitle: { fontSize: 16, fontWeight: "600" },
-  cardSub: { fontSize: 13, color: "grey" },
-  callBtn: { borderWidth: 1, borderColor: "#ddd", padding: 8, borderRadius: 12 },
-  orderSummary: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    width: '100%',
-    paddingHorizontal: 20,
-    marginBottom: 10,
-    backgroundColor: '#f5f5f5',
+  bottomBar: {
+    padding: responsiveWidth(5),
+    alignItems: "center",
+    backgroundColor: "white"
+  },
+  statusTitle: {
+    fontSize: responsiveFontSize(2.4),
+    fontWeight: "800",
+    color: "#2F2D2C",
+    marginBottom: responsiveHeight(1.5),
+    textAlign: "center",
+  },
+  progressRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: responsiveHeight(3),
+    justifyContent: "center"
+  },
+  dot: { width: 14, height: 14, borderRadius: 7 },
+  line: { width: responsiveWidth(15), height: 4, marginHorizontal: 6, borderRadius: 2 },
+  profile: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: responsiveWidth(4),
+    borderRadius: 18,
+    backgroundColor: "#F9F9F9",
+    width: "100%",
+    borderWidth: 1,
+    borderColor: "#F0F0F0",
+  },
+  iconContainer: {
+    width: 55,
+    height: 55,
+    borderRadius: 14,
+    backgroundColor: "#F9F2ED",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  cardTitle: { fontSize: responsiveFontSize(2), fontWeight: "700", color: "#2F2D2C" },
+  cardSub: { fontSize: responsiveFontSize(1.6), color: "#777", marginTop: 2 },
+  callBtn: {
+    borderWidth: 1,
+    borderColor: "#EAEAEA",
     padding: 10,
-    borderRadius: 10,
+    borderRadius: 12,
+    backgroundColor: "white",
+  },
+  orderSummary: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    width: "100%",
+    paddingHorizontal: responsiveWidth(4),
+    marginBottom: responsiveHeight(2),
+    backgroundColor: "#FDFDFD",
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#F5F5F5",
   },
   orderDetailText: {
-    fontSize: 14,
-    color: '#444',
-    fontWeight: '600',
+    fontSize: responsiveFontSize(1.8),
+    color: "#555",
+    fontWeight: "600",
   },
   orderPriceText: {
-    fontSize: 14,
-    color: '#C67C4E',
-    fontWeight: 'bold',
+    fontSize: responsiveFontSize(1.8),
+    color: "#C67C4E",
+    fontWeight: "bold",
   },
   receiveBtn: {
     backgroundColor: "#C67C4E",
     width: "100%",
-    height: 50,
-    borderRadius: 14,
+    height: 56,
+    borderRadius: 16,
     justifyContent: "center",
     alignItems: "center",
-    marginTop: 20
+    marginTop: responsiveHeight(2.5),
+    shadowColor: "#C67C4E",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
   },
   receiveBtnText: {
     color: "white",
-    fontSize: 16,
-    fontWeight: "bold"
-  }
+    fontSize: responsiveFontSize(2),
+    fontWeight: "bold",
+  },
 });
 
 export default MapScreen;

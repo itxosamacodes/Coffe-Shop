@@ -4,41 +4,180 @@ import { router } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
   Alert,
+  Dimensions,
+  FlatList,
   ScrollView,
   StatusBar,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  View
+  View,
 } from "react-native";
 import { Dropdown } from "react-native-element-dropdown";
+import Animated, {
+  FadeInDown
+} from "react-native-reanimated";
 import {
-  responsiveFontSize,
   responsiveHeight,
-  responsiveWidth,
+  responsiveWidth
 } from "react-native-responsive-dimensions";
+import { useTheme } from "../../context/ThemeContext";
 import { supabase } from "../../utils/supabase";
 
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
+
+const BANNERS = [
+  {
+    id: 1,
+    title: "Artisan Brews, Delivered Fresh",
+    tag: "Premium",
+    image: "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&q=80&w=800",
+  },
+  {
+    id: 2,
+    title: "The Perfect Pour Over",
+    tag: "Exclusive",
+    image: "https://images.unsplash.com/photo-1497933321027-94483ef36b33?auto=format&fit=crop&q=80&w=800",
+  },
+  {
+    id: 3,
+    title: "Morning Fuel: 20% Off",
+    tag: "Special",
+    image: "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&q=80&w=800",
+  },
+  {
+    id: 4,
+    title: "Chilled Bliss Every Day",
+    tag: "Featured",
+    image: "https://images.unsplash.com/photo-1512568400610-62da28bc8a13?auto=format&fit=crop&q=80&w=800",
+  },
+];
+
+const CATEGORIES = ["All Coffee", "Machiato", "Latte", "Americano", "Cappuccino"];
+
+const COFFEE_DATA = [
+  {
+    id: 1,
+    name: "Espresso",
+    subTitle: "Deep Foam",
+    price: "4.53",
+    rating: 4.8,
+    image: require("../../assets/ProductImage/cofe3.jpg"),
+    category: "All Coffee",
+  },
+  {
+    id: 2,
+    name: "Cappuccino",
+    subTitle: "Espresso",
+    price: "3.73",
+    rating: 4.5,
+    image: require("../../assets/ProductImage/cofe4.jpg"),
+    category: "Cappuccino",
+  },
+  {
+    id: 3,
+    name: "Latte",
+    subTitle: "Deep Foam",
+    price: "5.53",
+    rating: 3.8,
+    image: require("../../assets/ProductImage/cofe1.png"),
+    category: "Latte",
+  },
+  {
+    id: 4,
+    name: "Americano",
+    subTitle: "Espresso",
+    price: "3.21",
+    rating: 4.1,
+    image: require("../../assets/ProductImage/cofe2.png"),
+    category: "Americano",
+  },
+  {
+    id: 5,
+    name: "Mocha",
+    subTitle: "Deep Foam",
+    price: "5.23",
+    rating: 4.8,
+    image: require("../../assets/ProductImage/cofe5.jpg"),
+    category: "Machiato",
+  },
+  {
+    id: 6,
+    name: "Flat White",
+    subTitle: "Espresso",
+    price: "6.73",
+    rating: 3.2,
+    image: require("../../assets/ProductImage/cofe6.jpg"),
+    category: "All Coffee",
+  },
+  {
+    id: 7,
+    name: "Macchiato",
+    subTitle: "Espresso",
+    price: "3.95",
+    rating: 4.7,
+    image: require("../../assets/ProductImage/cofe7.jpg"),
+    category: "Machiato",
+  },
+  {
+    id: 8,
+    name: "Cold Brew",
+    subTitle: "Smooth",
+    price: "4.25",
+    rating: 4.9,
+    image: require("../../assets/ProductImage/cofe8.jpg"),
+    category: "All Coffee",
+  },
+  {
+    id: 9,
+    name: "Affogato",
+    subTitle: "Vanilla",
+    price: "4.75",
+    rating: 4.6,
+    image: require("../../assets/ProductImage/cofe9.jpg"),
+    category: "All Coffee",
+  },
+];
+
 const Home = () => {
-  const data = [
+  const { theme, isDark, toggleTheme } = useTheme();
+  const [selectedCategory, setSelectedCategory] = useState("All Coffee");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeBannerIndex, setActiveBannerIndex] = useState(0);
+  const [location, setLocation] = useState("islamabad");
+  const [filteredData, setFilteredData] = useState(COFFEE_DATA);
+
+  const bannerRef = useRef<FlatList>(null);
+
+  const locations = [
     { label: "Lahore, Pakistan", value: "lahore" },
     { label: "Islamabad, Pakistan", value: "islamabad" },
     { label: "Peshawar, Pakistan", value: "peshawar" },
   ];
-  const BuyHandler = (item: any) => {
-    router.push({
-      params: {
-        coffeImg: item.image,
-        coffeName: item.name,
-        coffePrice: item.price,
-        location: value,
-      },
-      pathname: "/(tabs)/detail",
+
+  // Auto-play for banners
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const nextIndex = (activeBannerIndex + 1) % BANNERS.length;
+      bannerRef.current?.scrollToIndex({ index: nextIndex, animated: true });
+      setActiveBannerIndex(nextIndex);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [activeBannerIndex]);
+
+  // Filtering Logic
+  useEffect(() => {
+    const filtered = COFFEE_DATA.filter((item) => {
+      const matchesCategory =
+        selectedCategory === "All Coffee" || item.category === selectedCategory;
+      const matchesSearch =
+        item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.subTitle.toLowerCase().includes(searchQuery.toLowerCase());
+      return matchesCategory && matchesSearch;
     });
-  };
-  const [selectedCategory, setSelectedCategory] = useState("All Coffee");
-  const [searchQuery, setSearchQuery] = useState("");
+    setFilteredData(filtered);
+  }, [selectedCategory, searchQuery]);
 
   const handleSignOut = async () => {
     const { error } = await supabase.auth.signOut();
@@ -49,226 +188,191 @@ const Home = () => {
     }
   };
 
-  const categories = ["All Coffee", "Machiato", "Latte", "American"];
-  const [value, setValue] = useState("islamabad");
-  const coffeeData = [
-    {
-      name: "Espresso",
-      subTitle: "Deep Foam",
-      price: "4.53",
-      rating: 4.8,
-      image: require("../../assets/ProductImage/cofe3.jpg"),
-    },
-    {
-      name: "Cappuccino",
-      subTitle: "Espresso",
-      price: "3.73",
-      rating: 4.5,
-      image: require("../../assets/ProductImage/cofe4.jpg"),
-    },
-    {
-      name: "Latte",
-      subTitle: "Deep Foam",
-      price: "5.53",
-      rating: 3.8,
-      image: require("../../assets/ProductImage/cofe1.png"),
-    },
-    {
-      name: "Americano",
-      subTitle: "Espresso",
-      price: "3.21",
-      rating: 4.1,
-      image: require("../../assets/ProductImage/cofe2.png"),
-    },
-    {
-      name: "Mocha",
-      subTitle: "Deep Foam",
-      price: "5.23",
-      rating: 4.8,
-      image: require("../../assets/ProductImage/cofe5.jpg"),
-    },
-    {
-      name: "Flat White",
-      subTitle: "Espresso",
-      price: "6.73",
-      rating: 3.2,
-      image: require("../../assets/ProductImage/cofe6.jpg"),
-    },
-    {
-      name: "Macchiato",
-      subTitle: "Espresso",
-      price: "3.95",
-      image: require("../../assets/ProductImage/cofe7.jpg"),
-    },
-    {
-      name: "Cold Brew",
-      subTitle: "Smooth",
-      price: "4.25",
-      image: require("../../assets/ProductImage/cofe8.jpg"),
-    },
-    {
-      name: "Affogato",
-      subTitle: "Vanilla",
-      price: "4.75",
-      image: require("../../assets/ProductImage/cofe9.jpg"),
-    },
-  ];
-  const [Arraydata, setArrayData] = useState<any[]>([]);
-  useEffect(() => {
-    const filtered = coffeeData.filter((item) => {
-      const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.subTitle.toLowerCase().includes(searchQuery.toLowerCase());
-      return matchesSearch;
-    });
-    setArrayData(filtered);
-  }, [searchQuery]);
-  const inputRef = useRef<TextInput>(null)
+  const renderProduct = ({ item, index }: { item: any; index: number }) => (
+    <Animated.View
+      entering={FadeInDown.delay(index * 100).duration(500)}
+      style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}
+    >
+      <TouchableOpacity
+        activeOpacity={0.9}
+        onPress={() =>
+          router.push({
+            params: {
+              coffeImg: item.image,
+              coffeName: item.name,
+              coffePrice: item.price,
+              location: location,
+            },
+            pathname: "/(tabs)/detail",
+          })
+        }
+      >
+        <Image source={item.image} style={styles.cardImage} contentFit="cover" />
+        <View style={styles.ratingBox}>
+          <Ionicons name="star" color="#D17842" size={10} />
+          <Text style={styles.ratingText}>{item.rating}</Text>
+        </View>
+        <View style={styles.cardContent}>
+          <Text style={[styles.cardTitle, { color: theme.text }]} numberOfLines={1}>{item.name}</Text>
+          <Text style={[styles.cardSubtitle, { color: theme.textMuted }]} numberOfLines={1}>{item.subTitle}</Text>
+          <View style={styles.priceRow}>
+            <Text style={[styles.price, { color: theme.text }]}>
+              <Text style={styles.currency}>$ </Text>
+              {item.price}
+            </Text>
+            <TouchableOpacity style={styles.addBtn}>
+              <Ionicons name="add" size={20} color="white" />
+            </TouchableOpacity>
+          </View>
+        </View>
+      </TouchableOpacity>
+    </Animated.View>
+  );
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#131313" />
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
+      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} translucent backgroundColor="transparent" />
 
-      {/* Header start */}
-      <View style={styles.header}>
-        <View style={styles.headerContent}>
-          <View style={styles.form}>
-            <Text style={styles.title}>Location</Text>
-            <View style={styles.dropContainer}>
-              <View style={{ width: 200 }}>
-                <Dropdown
-                  data={data}
-                  labelField="label"
-                  valueField="value"
-                  value={value}
-                  onChange={(item) => setValue(item.value)}
-                  selectedTextStyle={{
-                    color: "#D8D8D8",
-                    fontWeight: "600",
-                    fontSize: responsiveFontSize(2),
-                  }}
-                  renderRightIcon={() => (
-                    <Ionicons
-                      style={styles.dropdownIcon}
-                      color="white"
-                      name="chevron-down"
-                      size={20}
-                    />
-                  )}
-                />
-              </View>
-              <TouchableOpacity onPress={handleSignOut}>
-                <Ionicons name="log-out" size={25} color="grey" />
-              </TouchableOpacity>
-            </View>
-            {/* Search Row */}
-            <View style={styles.searchRow}>
-              <View style={styles.searchBar}>
-                <Ionicons
-                  name="search-outline"
-                  size={responsiveFontSize(2.5)}
-                  color="#FFFFFF"
-                  style={{ marginLeft: 15 }}
-                />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Search coffee"
-                  placeholderTextColor="#989898"
-                  value={searchQuery}
-                  onChangeText={setSearchQuery}
-                  ref={inputRef}
-                />
-                <TouchableOpacity style={styles.filterBtn} onPress={() => { inputRef.current?.focus() }}>
-                  <Ionicons name="filter-outline" size={22} color="#FFFFFF" />
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        </View>
-      </View>
+      {/* Background Header Layer */}
+      <View style={[styles.headerBackground, { backgroundColor: theme.header }]} />
 
-      {/* Banner start */}
-      <View style={styles.bannerContainer}>
-        <Image
-          source={require("../../assets/AppImg/Banner.png")}
-          style={styles.banner}
-          contentFit="cover"
-          priority="high"
-          cachePolicy="memory-disk"
-          transition={0}
-        />
-        <View style={styles.bannerTextContainer}>
-          <Text style={styles.promoTag}>Promo</Text>
-          <View>
-            <Text style={styles.bannerTitle}>Buy one get one FREE</Text>
-          </View>
-        </View>
-      </View>
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 100 }}
+        contentContainerStyle={styles.scrollContent}
       >
-        {/* Categories Menu */}
+        {/* Top Header */}
+        <View style={styles.topHeader}>
+          <View>
+            <Text style={styles.locationLabel}>Location</Text>
+            <View style={styles.locationDropdownContainer}>
+              <Dropdown
+                style={styles.dropdown}
+                data={locations}
+                labelField="label"
+                valueField="value"
+                value={location}
+                onChange={(item) => setLocation(item.value)}
+                selectedTextStyle={[styles.dropdownSelectedText, { color: theme.text }]}
+                renderRightIcon={() => (
+                  <Ionicons name="chevron-down" size={16} color={theme.text} style={{ marginLeft: 4 }} />
+                )}
+              />
+            </View>
+          </View>
+          <View style={styles.headerActions}>
+            <TouchableOpacity onPress={toggleTheme} style={styles.themeBtn}>
+              <Ionicons name={isDark ? "sunny" : "moon"} size={22} color={theme.textMuted} />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={handleSignOut} style={styles.logoutBtn}>
+              <Ionicons name="log-out-outline" size={24} color={theme.textMuted} />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Search Bar Row */}
+        <View style={styles.searchRow}>
+          <View style={[styles.searchBar, { backgroundColor: theme.searchBg }]}>
+            <Ionicons name="search" size={20} color={theme.searchIcon} style={styles.searchIcon} />
+            <TextInput
+              style={[styles.searchInput, { color: theme.text }]}
+              placeholder="Search coffee..."
+              placeholderTextColor={theme.searchIcon}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
+          </View>
+          <TouchableOpacity style={styles.filterBtn}>
+            <Ionicons name="options-outline" size={24} color="white" />
+          </TouchableOpacity>
+        </View>
+
+        {/* Banner Slider */}
+        <View style={styles.bannerListContainer}>
+          <FlatList
+            ref={bannerRef}
+            data={BANNERS}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            onMomentumScrollEnd={(e) => {
+              setActiveBannerIndex(Math.round(e.nativeEvent.contentOffset.x / (SCREEN_WIDTH * 0.9)));
+            }}
+            renderItem={({ item }) => (
+              <View style={styles.bannerSlide}>
+                <Image
+                  source={item.image}
+                  style={styles.bannerImage}
+                  contentFit="cover"
+                  transition={1000}
+                  placeholder={{ uri: "https://images.unsplash.com/photo-1512568400610-62da28bc8a13?auto=format&fit=crop&q=10&w=100" }}
+                />
+                <View style={styles.bannerOverlay}>
+                  <Text style={styles.promoTag}>{item.tag}</Text>
+                  <Text style={styles.bannerTitle}>{item.title}</Text>
+                </View>
+              </View>
+            )}
+            keyExtractor={(item) => item.id.toString()}
+          />
+          {/* Banner Dots */}
+          <View style={styles.bannerDots}>
+            {BANNERS.map((_, index) => (
+              <View
+                key={index}
+                style={[
+                  styles.dot,
+                  { backgroundColor: isDark ? "#333" : "#DDD" },
+                  activeBannerIndex === index && styles.activeDot,
+                ]}
+              />
+            ))}
+          </View>
+        </View>
+
+        {/* Categories */}
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          style={styles.menuScroll}
-          contentContainerStyle={styles.menuContainer}
+          style={styles.categoryScroll}
+          contentContainerStyle={styles.categoryContainer}
         >
-          {categories.map((item) => (
+          {CATEGORIES.map((cat) => (
             <TouchableOpacity
-              key={item}
-              onPress={() => setSelectedCategory(item)}
+              key={cat}
+              onPress={() => setSelectedCategory(cat)}
               style={[
                 styles.categoryBtn,
-                selectedCategory === item && styles.activeCategory,
+                { backgroundColor: theme.isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)", borderColor: theme.border },
+                selectedCategory === cat && styles.activeCategoryBtn,
               ]}
             >
               <Text
                 style={[
                   styles.categoryText,
-                  selectedCategory === item && styles.activeCategoryText,
+                  { color: theme.text },
+                  selectedCategory === cat && styles.activeCategoryText,
                 ]}
               >
-                {item}
+                {cat}
               </Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
 
-        {/* Cofe menu */}
-        <View style={styles.listContainer}>
-          {selectedCategory === "All Coffee" ? (
-            <View style={styles.gridContainer}>
-              {Arraydata.map((item, index) => (
-                <View key={index} style={styles.card}>
-                  <View style={styles.ratingBox}>
-                    <Ionicons name="star" color="#D17842" size={12} />
-                    <Text style={styles.ratingText}>{item.rating}</Text>
-                  </View>
-                  <Image source={item.image} style={styles.cardImage} contentFit="cover" transition={200} />
-                  <Text style={styles.cardTitle}>{item.name}</Text>
-                  <Text style={styles.cardSubtitle}>{item.subTitle}</Text>
-                  <View style={styles.priceRow}>
-                    <Text style={styles.currency}>
-                      $ <Text style={styles.price}>{item.price}</Text>
-                    </Text>
-                    <TouchableOpacity
-                      style={styles.addBtn}
-                      onPress={() => {
-                        BuyHandler(item);
-                      }}
-                    >
-                      <Ionicons name="add" size={16} color="white" />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              ))}
-            </View>
+        {/* Grid of Results */}
+        <View style={styles.gridContainer}>
+          {filteredData.length > 0 ? (
+            <FlatList
+              data={filteredData}
+              renderItem={renderProduct}
+              keyExtractor={(item) => item.id.toString()}
+              numColumns={2}
+              scrollEnabled={false}
+              columnWrapperStyle={styles.columnWrapper}
+            />
           ) : (
             <View style={styles.emptyState}>
-              <Text style={styles.emptyText}>
-                This item is currently out of stock
-              </Text>
+              <Text style={[styles.emptyText, { color: theme.textMuted }]}>No coffee found matching your search</Text>
             </View>
           )}
         </View>
@@ -281,218 +385,248 @@ export default Home;
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: "#F9F9F9",
     flex: 1,
   },
-  header: {
-    backgroundColor: "#131313",
-    height: responsiveHeight(35),
-    width: "100%",
-    paddingTop: StatusBar.currentHeight || 40,
-    alignItems: "center",
+  headerBackground: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    height: responsiveHeight(32),
   },
-  headerContent: {
-    width: "90%",
+  scrollContent: {
+    paddingTop: responsiveHeight(6),
+    paddingBottom: 40,
   },
-  form: {
-    marginTop: 20,
-  },
-  title: {
-    color: "#B7B7B7",
-    fontSize: responsiveFontSize(1.8),
-    marginBottom: 5,
-  },
-  dropContainer: {
+  topHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 20,
-    width: "100%",
+    paddingHorizontal: responsiveWidth(6),
+    marginBottom: responsiveHeight(3),
   },
-  dropdownIcon: {
-    marginLeft: 5,
+  locationLabel: {
+    color: "#666",
+    fontSize: 12,
+    marginBottom: 4,
+  },
+  locationDropdownContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  dropdown: {
+    width: 160,
+  },
+  dropdownSelectedText: {
+    fontSize: 14,
+    fontWeight: "bold",
+  },
+  headerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  themeBtn: {
+    padding: 8,
+    borderRadius: 12,
+    backgroundColor: "rgba(255,255,255,0.05)",
+  },
+  logoutBtn: {
+    padding: 8,
   },
   searchRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    paddingHorizontal: responsiveWidth(6),
+    gap: 12,
+    marginBottom: responsiveHeight(3),
   },
   searchBar: {
+    flex: 1,
     flexDirection: "row",
-    backgroundColor: "#313131",
+    alignItems: "center",
     borderRadius: 16,
     height: 55,
-    alignItems: "center",
-    flex: 1,
-    paddingRight: 5,
+    paddingHorizontal: 16,
   },
-  input: {
+  searchIcon: {
+    marginRight: 10,
+  },
+  searchInput: {
     flex: 1,
-    color: "white",
-    fontSize: responsiveFontSize(1.8),
-    marginLeft: 10,
+    fontSize: 14,
   },
   filterBtn: {
+    width: 55,
+    height: 55,
     backgroundColor: "#C67C4E",
-    height: 54,
-    width: 54,
-    borderRadius: 12,
+    borderRadius: 16,
     justifyContent: "center",
     alignItems: "center",
-    marginRight: -10,
   },
-
-  // Banner
-  bannerContainer: {
-    alignItems: "center",
-    marginTop: -responsiveHeight(10),
-    marginBottom: 20,
+  // Banner Slider
+  bannerListContainer: {
+    marginBottom: responsiveHeight(3),
   },
-  banner: {
-    width: "90%",
+  bannerSlide: {
+    width: SCREEN_WIDTH * 0.9,
     height: responsiveHeight(18),
-    borderRadius: 16,
+    marginHorizontal: SCREEN_WIDTH * 0.05,
+    borderRadius: 20,
+    overflow: "hidden",
   },
-  bannerTextContainer: {
+  bannerImage: {
+    width: "100%",
+    height: "100%",
+  },
+  bannerOverlay: {
     position: "absolute",
-    top: 20,
-    left: 40,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0,0,0,0.3)",
+    padding: 20,
+    justifyContent: "center",
   },
   promoTag: {
     backgroundColor: "#ED5151",
-    color: "white",
+    color: "#fff",
     paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 8,
+    borderRadius: 6,
     alignSelf: "flex-start",
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: "bold",
-    marginBottom: 10,
+    marginBottom: 8,
   },
-
   bannerTitle: {
-    color: "white",
-    fontSize: 32,
-    fontWeight: "bold",
-    width: 200,
-    textShadowColor: "rgba(0, 0, 0, 0.75)",
-    textShadowOffset: { width: -1, height: 1 },
-    textShadowRadius: 10,
+    color: "#fff",
+    fontSize: 24,
+    fontWeight: "800",
+    width: "70%",
   },
-
-  // Menu
-  menuScroll: {
-    maxHeight: 50,
-    marginBottom: 20,
-  },
-  menuContainer: {
-    paddingHorizontal: responsiveWidth(5),
-    gap: 15,
-  },
-  categoryBtn: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 12,
-    backgroundColor: "#E3E3E3",
+  bannerDots: {
+    flexDirection: "row",
     justifyContent: "center",
+    marginTop: 12,
+    gap: 6,
   },
-  activeCategory: {
+  dot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  activeDot: {
+    width: 20,
     backgroundColor: "#C67C4E",
   },
+  // Categories
+  categoryScroll: {
+    marginBottom: responsiveHeight(3),
+  },
+  categoryContainer: {
+    paddingHorizontal: responsiveWidth(6),
+    gap: 12,
+  },
+  categoryBtn: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  activeCategoryBtn: {
+    backgroundColor: "#C67C4E",
+    borderColor: "#C67C4E",
+  },
   categoryText: {
-    fontSize: 16,
-    color: "#2F2D2C",
+    fontSize: 14,
     fontWeight: "600",
   },
   activeCategoryText: {
-    color: "white",
+    color: "#fff",
   },
-
-  // List
-  listContainer: {
-    paddingHorizontal: responsiveWidth(5),
-  },
+  // Products
   gridContainer: {
-    flexDirection: "row",
-    flexWrap: "wrap",
+    paddingHorizontal: responsiveWidth(4),
+  },
+  columnWrapper: {
     justifyContent: "space-between",
+    marginBottom: 16,
   },
   card: {
-    backgroundColor: "white",
-    width: responsiveWidth(42),
-    borderRadius: 16,
+    width: responsiveWidth(44),
+    borderRadius: 20,
     padding: 8,
-    marginBottom: 20,
-    elevation: 3,
+    borderWidth: 1,
+    // Professional shadow for light mode
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 2,
   },
   cardImage: {
     width: "100%",
-    height: 120,
-    borderRadius: 12,
-    marginBottom: 10,
-  },
-  cardTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#2F2D2C",
-    marginLeft: 5,
-  },
-  cardSubtitle: {
-    fontSize: 12,
-    color: "#9B9B9B",
-    marginLeft: 5,
-    marginBottom: 10,
-  },
-  priceRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 5,
-    marginBottom: 5,
-  },
-  currency: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#2F4B4E",
-  },
-  price: {
-    color: "#2F2D2C",
-  },
-  addBtn: {
-    backgroundColor: "#C67C4E",
-    padding: 8,
-    borderRadius: 10,
+    height: responsiveHeight(15),
+    borderRadius: 16,
+    marginBottom: 12,
   },
   ratingBox: {
     position: "absolute",
-    top: 8,
-    right: 8,
-    zIndex: 1,
+    top: 14,
+    right: 14,
     backgroundColor: "rgba(0,0,0,0.6)",
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 8,
     paddingVertical: 4,
-    borderTopRightRadius: 12,
-    borderBottomLeftRadius: 12,
+    borderRadius: 10,
   },
   ratingText: {
-    color: "white",
+    color: "#fff",
     fontSize: 10,
     fontWeight: "bold",
-    marginLeft: 4,
+    marginLeft: 3,
+  },
+  cardContent: {
+    paddingHorizontal: 4,
+  },
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    marginBottom: 2,
+  },
+  cardSubtitle: {
+    fontSize: 12,
+    marginBottom: 12,
+  },
+  priceRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  price: {
+    fontSize: 18,
+    fontWeight: "700",
+  },
+  currency: {
+    color: "#C67C4E",
+  },
+  addBtn: {
+    backgroundColor: "#C67C4E",
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    justifyContent: "center",
+    alignItems: "center",
   },
   emptyState: {
     alignItems: "center",
-    marginTop: 50,
+    paddingTop: 40,
   },
   emptyText: {
-    fontSize: 16,
-    color: "#999",
+    fontSize: 14,
+    textAlign: "center",
   },
 });
-

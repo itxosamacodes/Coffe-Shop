@@ -1,5 +1,6 @@
 import { supabase } from "@/utils/supabase";
 import { Feather, Ionicons, MaterialIcons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import React, { useState } from "react";
 import {
@@ -7,12 +8,19 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  StatusBar,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
+import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
+import {
+  responsiveFontSize,
+  responsiveHeight,
+  responsiveWidth,
+} from "react-native-responsive-dimensions";
 
 export default function CoffeeLoginScreen() {
   const [email, setEmail] = useState("itxosama.io@gmail.com");
@@ -24,7 +32,7 @@ export default function CoffeeLoginScreen() {
   const SignUpHandler = async () => {
     setErrorMsg("");
     if (!email || !password) {
-      setErrorMsg("Please fill all the fildes");
+      setErrorMsg("Please fill all fields");
       return;
     }
 
@@ -43,12 +51,12 @@ export default function CoffeeLoginScreen() {
     if (authData.user) {
       // Check if user is an admin
       const { data: adminData, error: adminError } = await supabase
-        .from('coffee_lovers')
-        .select('role')
-        .eq('user_id', authData.user.id)
+        .from("coffee_lovers")
+        .select("role")
+        .eq("user_id", authData.user.id)
         .single();
 
-      if (!adminError && adminData?.role === 'admin') {
+      if (!adminError && adminData?.role === "admin") {
         setLoading(false);
         router.replace("/(admin)/dashboard");
         return;
@@ -56,22 +64,23 @@ export default function CoffeeLoginScreen() {
 
       // Check if user is a rider
       const { data: riderData, error: riderError } = await supabase
-        .from('riders')
-        .select('status')
-        .eq('user_id', authData.user.id)
+        .from("riders")
+        .select("status")
+        .eq("user_id", authData.user.id)
         .single();
 
       setLoading(false);
 
-      if (riderError && riderError.code !== 'PGRST116') { // PGRST116 is 'not found'
+      if (riderError && riderError.code !== "PGRST116") {
+        // PGRST116 is 'not found'
         setErrorMsg(riderError.message);
         return;
       }
 
       if (riderData) {
-        if (riderData.status === 'approved') {
+        if (riderData.status === "approved") {
           router.replace("/(rider)/dashboard");
-        } else if (riderData.status === 'pending') {
+        } else if (riderData.status === "pending") {
           router.replace("/(auth)/pendingApproval");
         } else {
           setErrorMsg("Your application was rejected. Please contact support.");
@@ -84,177 +93,202 @@ export default function CoffeeLoginScreen() {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-    >
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" />
+      <LinearGradient
+        colors={["#000000", "#12100E"]}
+        style={StyleSheet.absoluteFillObject}
+      />
+
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
-        {/* Coffee Cup Image */}
-        <View style={styles.imageContainer}>
-          <View style={styles.cupOuter}>
-            <Ionicons name="cafe" size={60} color={"#C87941"} />
-          </View>
-        </View>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Header Section */}
+          <Animated.View
+            entering={FadeInDown.delay(200).duration(800)}
+            style={styles.headerContainer}
+          >
+            <View style={styles.logoIcon}>
+              <Ionicons name="cafe" size={32} color="#C67C4E" />
+            </View>
+            <Text style={styles.welcomeText}>Welcome Back</Text>
+            <Text style={styles.subtitle}>
+              Sip your way back into your account.
+            </Text>
+          </Animated.View>
 
-        {/* Welcome Text */}
-        <Text style={styles.welcomeText}>Welcome Back!</Text>
-        <Text style={styles.subtitle}>
-          Login to your account to enjoy your favorite coffee.
-        </Text>
+          {/* Form Section */}
+          <Animated.View
+            entering={FadeInDown.delay(400).duration(800)}
+            style={styles.formContainer}
+          >
+            {/* Email Input */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Email Address</Text>
+              <View style={styles.inputWrapper}>
+                <MaterialIcons
+                  name="email"
+                  size={20}
+                  color="#999"
+                  style={styles.inputIcon}
+                />
+                <TextInput
+                  style={styles.input}
+                  placeholder="name@email.com"
+                  placeholderTextColor="#666"
+                  value={email}
+                  onChangeText={setEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                />
+              </View>
+            </View>
 
-        {/* Email Input */}
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Email Address</Text>
-          <View style={styles.inputWrapper}>
-            <MaterialIcons
-              name="email"
-              size={20}
-              color="#999"
-              style={styles.inputIcon}
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Enter your email"
-              placeholderTextColor="#666"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
-          </View>
-        </View>
+            {/* Password Input */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Password</Text>
+              <View style={styles.inputWrapper}>
+                <Feather
+                  name="lock"
+                  size={20}
+                  color="#999"
+                  style={styles.inputIcon}
+                />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Enter your password"
+                  placeholderTextColor="#666"
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry={!showPassword}
+                />
+                <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                  <Feather
+                    name={showPassword ? "eye" : "eye-off"}
+                    size={20}
+                    color="#999"
+                    style={styles.eyeIcon}
+                  />
+                </TouchableOpacity>
+              </View>
+            </View>
 
-        {/* Password Input */}
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Password</Text>
-          <View style={styles.inputWrapper}>
-            <Feather
-              name="lock"
-              size={20}
-              color="#999"
-              style={styles.inputIcon}
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Enter your password"
-              placeholderTextColor="#666"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry={!showPassword}
-            />
-            <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-              <Feather
-                name={showPassword ? "eye" : "eye-off"}
-                size={20}
-                color="#999"
-                style={styles.eyeIcon}
-              />
+            {/* Forgot Password */}
+            <TouchableOpacity
+              style={styles.forgotPassword}
+              onPress={() => router.push("/(auth)/forget")}
+            >
+              <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
             </TouchableOpacity>
-          </View>
-        </View>
 
-        {/* Forgot Password */}
-        <TouchableOpacity
-          style={styles.forgotPassword}
-          onPress={() => router.push("/(auth)/forget")}
-        >
-          <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
-        </TouchableOpacity>
-        {ErrorMsg ? <Text style={styles.error}>{ErrorMsg}</Text> : null}
+            {ErrorMsg ? <Text style={styles.error}>{ErrorMsg}</Text> : null}
 
-        {/* Login Button */}
-        <TouchableOpacity
-          style={styles.loginButton}
-          onPress={SignUpHandler}
-          disabled={Loading}
-        >
-          <Text style={styles.loginButtonText}>
-            {Loading ? (
-              <ActivityIndicator size={"small"} color={"white"} />
-            ) : (
-              "Login"
-            )}
-          </Text>
-        </TouchableOpacity>
+            {/* Login Button */}
+            <TouchableOpacity
+              style={styles.loginButton}
+              onPress={SignUpHandler}
+              disabled={Loading}
+            >
+              {Loading ? (
+                <ActivityIndicator size={"small"} color={"white"} />
+              ) : (
+                <Text style={styles.loginButtonText}>Login</Text>
+              )}
+            </TouchableOpacity>
+          </Animated.View>
 
-        {/* signIn with Google */}
-        <Text style={styles.continueText}>Or continue with</Text>
+          {/* Footer Section */}
+          <Animated.View
+            entering={FadeInUp.delay(600).duration(800)}
+            style={styles.footerContainer}
+          >
+            <Text style={styles.continueText}>Or continue with</Text>
 
-        <TouchableOpacity style={styles.socialButton}>
-          <Ionicons name="logo-google" size={30} color={"#C87941"} />
-          <Text style={{ color: "#fff", fontSize: 16, fontWeight: "600" }}>
-            SignIn With Google
-          </Text>
-        </TouchableOpacity>
+            <TouchableOpacity style={styles.socialButton}>
+              <Ionicons name="logo-google" size={24} color="#FFFFFF" />
+              <Text style={styles.socialButtonText}>Google</Text>
+            </TouchableOpacity>
 
-        {/* if already have Register */}
-        <View style={styles.registerContainer}>
-          <Text style={styles.registerText}>Don t have an account? </Text>
-          <TouchableOpacity onPress={() => router.push("/(auth)/signUp")}>
-            <Text style={styles.registerLink}>Register</Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+            <View style={styles.registerContainer}>
+              <Text style={styles.registerText}>Don't have an account? </Text>
+              <TouchableOpacity onPress={() => router.push("/(auth)/signUp")}>
+                <Text style={styles.registerLink}>Register</Text>
+              </TouchableOpacity>
+            </View>
+          </Animated.View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#1a1a1a",
+    backgroundColor: "#000",
   },
   scrollContent: {
     flexGrow: 1,
-    paddingHorizontal: 30,
-    paddingTop: 60,
-    paddingBottom: 40,
+    paddingHorizontal: responsiveWidth(8),
+    paddingTop: responsiveHeight(10),
+    paddingBottom: responsiveHeight(5),
   },
-  imageContainer: {
+  headerContainer: {
     alignItems: "center",
-    marginBottom: 40,
+    marginBottom: responsiveHeight(6),
   },
-  cupOuter: {
-    width: 100,
-    height: 100,
-    borderRadius: 60,
-    backgroundColor: "#2a2a2a",
+  logoIcon: {
+    width: 60,
+    height: 60,
+    borderRadius: 15,
+    backgroundColor: "rgba(198, 124, 78, 0.1)",
     justifyContent: "center",
     alignItems: "center",
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: "rgba(198, 124, 78, 0.2)",
   },
   welcomeText: {
-    fontSize: 32,
-    fontWeight: "bold",
+    fontSize: responsiveFontSize(4),
+    fontWeight: "800",
     color: "#fff",
     textAlign: "center",
     marginBottom: 8,
+    letterSpacing: 0.5,
   },
   subtitle: {
-    fontSize: 14,
-    color: "#999",
+    fontSize: responsiveFontSize(1.8),
+    color: "#A2A2A2",
     textAlign: "center",
-    marginBottom: 40,
-    lineHeight: 20,
+    lineHeight: 22,
   },
-  inputContainer: {
+  formContainer: {
+    marginBottom: responsiveHeight(4),
+  },
+  inputGroup: {
     marginBottom: 20,
   },
   label: {
-    fontSize: 14,
+    fontSize: responsiveFontSize(1.6),
     color: "#fff",
     marginBottom: 8,
-    fontWeight: "500",
+    fontWeight: "600",
+    marginLeft: 4,
   },
   inputWrapper: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#2a2a2a",
-    borderRadius: 12,
+    backgroundColor: "rgba(255, 255, 255, 0.05)",
+    borderRadius: 16,
     paddingHorizontal: 16,
-    height: 56,
+    height: 60,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.1)",
   },
   inputIcon: {
     marginRight: 12,
@@ -262,53 +296,69 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     color: "#fff",
-    fontSize: 15,
+    fontSize: responsiveFontSize(1.8),
   },
   eyeIcon: {
     padding: 4,
   },
   error: {
-    color: "red",
-    paddingBottom: 16,
-    top: -16,
+    color: "#FF4B4B",
     textAlign: "center",
+    marginBottom: 16,
+    fontSize: responsiveFontSize(1.6),
   },
   forgotPassword: {
     alignSelf: "flex-end",
-    marginBottom: 24,
+    marginBottom: 30,
   },
   forgotPasswordText: {
-    color: "#C87941",
-    fontSize: 14,
+    color: "#C67C4E",
+    fontSize: responsiveFontSize(1.6),
+    fontWeight: "600",
   },
   loginButton: {
-    backgroundColor: "#C87941",
-    borderRadius: 12,
-    height: 56,
+    backgroundColor: "#C67C4E",
+    borderRadius: 16,
+    height: 60,
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 24,
+    shadowColor: "#C67C4E",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
   },
   loginButtonText: {
     color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
+    fontSize: responsiveFontSize(2),
+    fontWeight: "700",
+    letterSpacing: 0.5,
+  },
+  footerContainer: {
+    alignItems: "center",
   },
   continueText: {
-    color: "#999",
-    fontSize: 14,
-    textAlign: "center",
+    color: "#666",
+    fontSize: responsiveFontSize(1.6),
     marginBottom: 20,
   },
   socialButton: {
-    alignItems: "center",
     flexDirection: "row",
-    height: 56,
-    backgroundColor: "#2a2a2a",
-    borderRadius: 12,
+    alignItems: "center",
+    backgroundColor: "rgba(255, 255, 255, 0.05)",
+    borderRadius: 16,
+    height: 60,
+    width: "100%",
     justifyContent: "center",
-    marginBottom: 24,
-    gap: 25,
+    marginBottom: 30,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.1)",
+    gap: 12,
+  },
+  socialButtonText: {
+    color: "#fff",
+    fontSize: responsiveFontSize(2),
+    fontWeight: "600",
   },
   registerContainer: {
     flexDirection: "row",
@@ -316,12 +366,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   registerText: {
-    color: "#999",
-    fontSize: 14,
+    color: "#A2A2A2",
+    fontSize: responsiveFontSize(1.8),
   },
   registerLink: {
-    color: "#C87941",
-    fontSize: 14,
-    fontWeight: "600",
+    color: "#C67C4E",
+    fontSize: responsiveFontSize(1.8),
+    fontWeight: "700",
   },
 });

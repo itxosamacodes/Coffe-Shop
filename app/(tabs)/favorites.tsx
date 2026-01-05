@@ -4,65 +4,80 @@ import { router } from "expo-router";
 import React from "react";
 import {
     FlatList,
+    StatusBar,
     StyleSheet,
     Text,
     TouchableOpacity,
     View,
 } from "react-native";
+import Animated, { FadeInDown } from "react-native-reanimated";
 import {
+    responsiveFontSize,
     responsiveHeight,
     responsiveWidth
 } from "react-native-responsive-dimensions";
 import { useFavorites } from "../../context/FavoritesContext";
+import { useTheme } from "../../context/ThemeContext";
 
 const FavoritesScreen = () => {
     const { favorites } = useFavorites();
+    const { theme, isDark } = useTheme();
 
-    const renderFavoriteItem = ({ item }: { item: any }) => (
-        <TouchableOpacity
-            style={styles.card}
-            onPress={() => router.push({
-                pathname: "/(tabs)/detail",
-                params: {
-                    coffeImg: item.image,
-                    coffeName: item.name,
-                    coffePrice: item.price,
-                    location: "islamabad" // default location
-                }
-            })}
-        >
-            <Image
-                source={
-                    typeof item.image === "number"
-                        ? item.image
-                        : typeof item.image === "string" && !isNaN(Number(item.image))
-                            ? Number(item.image)
-                            : { uri: item.image }
-                }
-                style={styles.cardImage}
-                contentFit="cover"
-                cachePolicy="memory-disk"
-                transition={0}
-            />
-            <View style={styles.cardInfo}>
-                <Text style={styles.cardTitle}>{item.name}</Text>
-                <Text style={styles.cardSubtitle}>{item.subTitle}</Text>
-                <View style={styles.priceRow}>
-                    <Text style={styles.currency}>$ <Text style={styles.price}>{item.price}</Text></Text>
-                    <Ionicons name="heart" size={24} color="#C67C4E" />
+    const renderFavoriteItem = ({ item, index }: { item: any; index: number }) => (
+        <Animated.View entering={FadeInDown.delay(index * 100).duration(500)}>
+            <TouchableOpacity
+                style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}
+                activeOpacity={0.9}
+                onPress={() => router.push({
+                    pathname: "/(tabs)/detail",
+                    params: {
+                        coffeImg: item.image,
+                        coffeName: item.name,
+                        coffePrice: item.price,
+                        location: "islamabad"
+                    }
+                })}
+            >
+                <Image
+                    source={
+                        typeof item.image === "number"
+                            ? item.image
+                            : typeof item.image === "string" && !isNaN(Number(item.image))
+                                ? Number(item.image)
+                                : { uri: item.image }
+                    }
+                    style={styles.cardImage}
+                    contentFit="cover"
+                />
+                <View style={styles.cardInfo}>
+                    <View>
+                        <Text style={[styles.cardTitle, { color: theme.text }]}>{item.name}</Text>
+                        <Text style={[styles.cardSubtitle, { color: theme.textMuted }]}>{item.subTitle}</Text>
+                    </View>
+                    <View style={styles.priceRow}>
+                        <Text style={[styles.price, { color: theme.text }]}>
+                            <Text style={styles.currency}>$ </Text>
+                            {item.price}
+                        </Text>
+                        <TouchableOpacity style={styles.heartBtn}>
+                            <Ionicons name="heart" size={22} color={theme.primary} />
+                        </TouchableOpacity>
+                    </View>
                 </View>
-            </View>
-        </TouchableOpacity>
+            </TouchableOpacity>
+        </Animated.View>
     );
 
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, { backgroundColor: theme.background }]}>
+            <StatusBar barStyle={isDark ? "light-content" : "dark-content"} translucent backgroundColor="transparent" />
+
             {/* Header */}
-            <View style={styles.header}>
+            <View style={[styles.header, { backgroundColor: theme.header }]}>
                 <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-                    <Ionicons name="chevron-back" size={28} color="black" />
+                    <Ionicons name="chevron-back" size={24} color={theme.text} />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>Favorites</Text>
+                <Text style={[styles.headerTitle, { color: theme.text }]}>Favorites</Text>
                 <View style={{ width: 44 }} />
             </View>
 
@@ -71,20 +86,23 @@ const FavoritesScreen = () => {
                 keyExtractor={(item) => item.name}
                 contentContainerStyle={styles.listContent}
                 renderItem={renderFavoriteItem}
+                showsVerticalScrollIndicator={false}
                 ListEmptyComponent={
                     <View style={styles.emptyState}>
-                        <Ionicons name="heart-outline" size={80} color="#E3E3E3" />
-                        <Text style={styles.emptyText}>Your favorites list is empty</Text>
+                        <View style={[styles.emptyIconContainer, { backgroundColor: theme.surface }]}>
+                            <Ionicons name="heart-outline" size={60} color={isDark ? "#333" : "#DDD"} />
+                        </View>
+                        <Text style={[styles.emptyText, { color: theme.text }]}>No favorites yet</Text>
+                        <Text style={[styles.emptySubText, { color: theme.textMuted }]}>Start favoriting your preferred coffee!</Text>
                         <TouchableOpacity
                             style={styles.shopBtn}
                             onPress={() => router.push("/(tabs)/home")}
                         >
-                            <Text style={styles.shopBtnText}>Go to Home</Text>
+                            <Text style={styles.shopBtnText}>Browse Coffee</Text>
                         </TouchableOpacity>
                     </View>
                 }
             />
-
         </View>
     );
 };
@@ -94,95 +112,112 @@ export default FavoritesScreen;
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: "#FDFDFD",
-        paddingTop: responsiveHeight(7),
     },
     header: {
+        height: responsiveHeight(15),
         flexDirection: "row",
         alignItems: "center",
-        paddingHorizontal: responsiveWidth(5),
-        marginBottom: 20,
+        paddingHorizontal: responsiveWidth(6),
+        paddingTop: responsiveHeight(4),
     },
     backBtn: {
-        padding: 8,
-        marginLeft: -8,
+        width: 44,
+        height: 44,
+        borderRadius: 12,
+        backgroundColor: "rgba(128,128,128,0.1)",
+        justifyContent: "center",
+        alignItems: "center",
     },
     headerTitle: {
         flex: 1,
         textAlign: "center",
-        fontSize: 20,
+        fontSize: responsiveFontSize(2.2),
         fontWeight: "700",
-        color: "#2F2D2C",
+        letterSpacing: 0.5,
     },
     listContent: {
-        paddingHorizontal: responsiveWidth(5),
-        paddingBottom: 100,
+        paddingHorizontal: responsiveWidth(6),
+        paddingTop: 20,
+        paddingBottom: 120,
     },
     card: {
         flexDirection: "row",
-        backgroundColor: "white",
-        borderRadius: 16,
+        borderRadius: 20,
         padding: 12,
-        marginBottom: 15,
+        marginBottom: 16,
         borderWidth: 1,
-        borderColor: "#F0F0F0",
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 5,
-        elevation: 2,
     },
     cardImage: {
-        width: 100,
-        height: 100,
-        borderRadius: 12,
+        width: 90,
+        height: 90,
+        borderRadius: 16,
     },
     cardInfo: {
         flex: 1,
-        marginLeft: 15,
+        marginLeft: 16,
         justifyContent: "space-between",
-        paddingVertical: 5,
+        paddingVertical: 2,
     },
     cardTitle: {
-        fontSize: 18,
+        fontSize: responsiveFontSize(2),
         fontWeight: "700",
-        color: "#2F2D2C",
     },
     cardSubtitle: {
-        fontSize: 14,
-        color: "#999",
+        fontSize: responsiveFontSize(1.6),
         marginTop: 2,
     },
     priceRow: {
         flexDirection: "row",
         justifyContent: "space-between",
         alignItems: "center",
-        marginTop: 5,
-    },
-    currency: {
-        fontSize: 18,
-        fontWeight: "700",
-        color: "#C67C4E",
     },
     price: {
-        color: "#2F2D2C",
+        fontSize: responsiveFontSize(2),
+        fontWeight: "800",
+    },
+    currency: {
+        color: "#C67C4E",
+    },
+    heartBtn: {
+        width: 36,
+        height: 36,
+        borderRadius: 10,
+        backgroundColor: "rgba(198, 124, 78, 0.1)",
+        justifyContent: "center",
+        alignItems: "center",
     },
     emptyState: {
         alignItems: "center",
-        marginTop: 100,
+        marginTop: responsiveHeight(15),
+    },
+    emptyIconContainer: {
+        width: 120,
+        height: 120,
+        borderRadius: 60,
+        justifyContent: "center",
+        alignItems: "center",
+        marginBottom: 20,
     },
     emptyText: {
-        fontSize: 18,
-        color: "#999",
-        marginTop: 20,
-        fontWeight: "600",
+        fontSize: responsiveFontSize(2.2),
+        fontWeight: "700",
+    },
+    emptySubText: {
+        fontSize: responsiveFontSize(1.6),
+        marginTop: 8,
+        textAlign: "center",
     },
     shopBtn: {
-        marginTop: 20,
+        marginTop: 30,
         backgroundColor: "#C67C4E",
         paddingHorizontal: 30,
-        paddingVertical: 12,
-        borderRadius: 12,
+        paddingVertical: 14,
+        borderRadius: 16,
+        shadowColor: "#C67C4E",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 5,
     },
     shopBtnText: {
         color: "white",
@@ -190,4 +225,3 @@ const styles = StyleSheet.create({
         fontSize: 16,
     },
 });
-

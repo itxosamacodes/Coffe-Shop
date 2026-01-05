@@ -147,6 +147,7 @@ const Home = () => {
   const [activeBannerIndex, setActiveBannerIndex] = useState(0);
   const [location, setLocation] = useState("islamabad");
   const [filteredData, setFilteredData] = useState(COFFEE_DATA);
+  const [activeOrder, setActiveOrder] = useState<any>(null);
 
   const scrollY = useSharedValue(0);
   const onScroll = useAnimatedScrollHandler((event) => {
@@ -160,6 +161,44 @@ const Home = () => {
     { label: "Islamabad, Pakistan", value: "islamabad" },
     { label: "Peshawar, Pakistan", value: "peshawar" },
   ];
+
+  useEffect(() => {
+    fetchActiveOrder();
+    const subscription = supabase
+      .channel('active_order_home')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'orders'
+      }, () => {
+        fetchActiveOrder();
+      })
+      .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  const fetchActiveOrder = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data, error } = await supabase
+      .from('orders')
+      .select('*')
+      .eq('user_id', user.id)
+      .in('status', ['pending', 'approved', 'accepted', 'picked_up', 'delivered'])
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (data) {
+      setActiveOrder(data);
+    } else {
+      setActiveOrder(null);
+    }
+  };
 
   // Auto-play for banners
   useEffect(() => {
@@ -340,6 +379,46 @@ const Home = () => {
         onScroll={onScroll}
         scrollEventThrottle={16}
       >
+
+        {/* Active Order Tracker Widget */}
+        {activeOrder && (
+          <Animated.View
+            entering={FadeInDown.duration(600)}
+            style={[styles.activeOrderCard, { backgroundColor: theme.surface, borderColor: theme.border }]}
+          >
+            <View style={styles.orderIconOuter}>
+              <View style={styles.orderIconInner}>
+                <Ionicons name="bicycle" size={24} color={theme.primary} />
+              </View>
+            </View>
+            <View style={styles.orderTextContainer}>
+              <Text style={[styles.orderStatusLabel, { color: theme.textMuted }]}>Ongoing Delivery</Text>
+              <Text style={[styles.orderStatusValue, { color: theme.text }]} numberOfLines={1}>
+                {activeOrder.status === 'pending' ? 'Waiting for approval' :
+                  activeOrder.status === 'approved' ? 'Looking for rider' :
+                    activeOrder.status === 'accepted' ? 'Preparing order' :
+                      activeOrder.status === 'picked_up' ? 'Rider on the way' :
+                        activeOrder.status === 'delivered' ? 'Arrived at location' : 'Processing...'}
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={styles.trackButton}
+              onPress={() => {
+                let path: any = "/order-tracking";
+                if (activeOrder.status === 'approved') path = "/waiting-for-rider";
+                else if (['accepted', 'picked_up', 'delivered'].includes(activeOrder.status)) path = "/(tabs)/delivery";
+
+                router.push({
+                  pathname: path,
+                  params: { orderId: activeOrder.id }
+                });
+              }}
+            >
+              <Text style={styles.trackButtonText}>Track</Text>
+              <Ionicons name="chevron-forward" size={16} color="white" />
+            </TouchableOpacity>
+          </Animated.View>
+        )}
 
         {/* Categories */}
         <ScrollView
@@ -641,5 +720,65 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 14,
     textAlign: "center",
+  },
+  activeOrderCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: responsiveWidth(6),
+    padding: 12,
+    borderRadius: 20,
+    borderWidth: 1,
+    marginBottom: responsiveHeight(3),
+    // Shadow for light mode
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 2,
+  },
+  orderIconOuter: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    backgroundColor: 'rgba(198, 124, 78, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  orderIconInner: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: 'rgba(198, 124, 78, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  orderTextContainer: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  orderStatusLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 2,
+  },
+  orderStatusValue: {
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  trackButton: {
+    backgroundColor: '#C67C4E',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 14,
+    gap: 4,
+  },
+  trackButtonText: {
+    color: 'white',
+    fontSize: 13,
+    fontWeight: 'bold',
   },
 });

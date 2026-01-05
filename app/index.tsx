@@ -18,6 +18,7 @@ import {
   responsiveScreenWidth,
 } from "react-native-responsive-dimensions";
 import SlideButton from "../components/SlideButton";
+import { supabase } from "../utils/supabase";
 
 const Index = () => {
   // Animation values
@@ -28,6 +29,53 @@ const Index = () => {
   const buttonOpacity = useSharedValue(0);
 
   useEffect(() => {
+    checkSession();
+  }, []);
+
+  const checkSession = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (session?.user) {
+      console.log("Session found, checking role for:", session.user.id);
+
+      // 1. Check if Rider
+      const { data: riderData, error: riderError } = await supabase
+        .from("riders")
+        .select("status")
+        .eq("user_id", session.user.id)
+        .single();
+
+      if (riderData) {
+        if (riderData.status === "approved") {
+          router.replace("/(rider)/dashboard");
+          return;
+        } else if (riderData.status === "pending") {
+          router.replace("/(auth)/pendingApproval");
+          return;
+        }
+      }
+
+      // 2. Check if Admin (via coffee_lovers role)
+      const { data: loverData } = await supabase
+        .from("coffee_lovers")
+        .select("role")
+        .eq("user_id", session.user.id)
+        .single();
+
+      if (loverData?.role === "admin") {
+        router.replace("/(admin)/dashboard");
+        return;
+      }
+
+      // 3. Default to Customer Home if session exists but not a rider/admin
+      router.replace("/(tabs)/home");
+    } else {
+      // No session, start splash animations
+      startAnimations();
+    }
+  };
+
+  const startAnimations = () => {
     // Sequence of animations
     imageOpacity.value = withTiming(1, { duration: 1200 });
     imageScale.value = withTiming(1, { duration: 2000 });
@@ -36,7 +84,7 @@ const Index = () => {
     textOpacity.value = withDelay(600, withTiming(1, { duration: 800 }));
 
     buttonOpacity.value = withDelay(1400, withTiming(1, { duration: 1000 }));
-  }, []);
+  };
 
   const animatedImageStyle = useAnimatedStyle(() => ({
     transform: [{ scale: imageScale.value }],

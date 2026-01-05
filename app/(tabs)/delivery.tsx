@@ -13,13 +13,14 @@ import {
   View,
 } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import MapView, { Marker, Polyline } from "react-native-maps";
+import MapView, { Marker } from "react-native-maps";
 import Animated, { FadeIn, Layout } from "react-native-reanimated";
 import {
   responsiveFontSize,
   responsiveHeight,
   responsiveWidth,
 } from "react-native-responsive-dimensions";
+import { RoutePolyline } from "../../components/RoutePolyline";
 import { useTheme } from "../../context/ThemeContext";
 import { CafeLocation, getCafeLocation } from "../../utils/cafeLocations";
 import { supabase } from "../../utils/supabase";
@@ -32,7 +33,6 @@ const MapScreen = () => {
 
   const bottomSheetRef = useRef<BottomSheet>(null);
   const mapRef = useRef<MapView>(null);
-  const snapPoints = useMemo(() => ["20%", "35%"], []);
 
   const [userLocation, setUserLocation] = useState<{
     latitude: number;
@@ -62,19 +62,34 @@ const MapScreen = () => {
     getCafeLocation()
   );
 
+  const snapPoints = useMemo(() =>
+    orderStatus === "delivered" ? ["85%"] : ["20%", "35%"]
+    , [orderStatus]);
+
   useEffect(() => {
     fetchUserLocation();
     let unsubscribe: any = null;
+    let pollingInterval: any = null;
+
     if (orderId) {
       fetchOrderDetails();
       unsubscribe = subscribeToOrder();
+
+      // Production Fallback: Polling every 8 seconds in case Realtime fails
+      pollingInterval = setInterval(() => {
+        console.log("🔄 [POLLING] Synchronizing order state...");
+        fetchOrderDetails();
+      }, 8000);
     }
+
     return () => {
       if (unsubscribe) unsubscribe();
+      if (pollingInterval) clearInterval(pollingInterval);
     };
   }, [orderId]);
 
   const fetchOrderDetails = async () => {
+    if (!orderId) return;
     const { data: order, error } = await supabase
       .from("orders")
       .select("*")
@@ -82,28 +97,35 @@ const MapScreen = () => {
       .single();
 
     if (order) {
-      setOrderStatus(order.status);
+      const trimmedStatus = order.status?.trim();
+      if (trimmedStatus !== orderStatus) {
+        console.log(`✅ [SYNC] Status updated from ${orderStatus} to ${trimmedStatus}`);
+        setOrderStatus(trimmedStatus);
+      }
+
       setOrderDetails({
         item_name: order.item_name,
         quantity: order.quantity,
         total_price: Number(order.total_price),
       });
-      if (order.rider_lat && order.rider_lng) {
-        setRiderLocation({
+
+      if (order.rider_lat != null && order.rider_lng != null) {
+        const newRiderLoc = {
           latitude: Number(order.rider_lat),
           longitude: Number(order.rider_lng),
-        });
+        };
+        if (!isNaN(newRiderLoc.latitude) && !isNaN(newRiderLoc.longitude)) {
+          setRiderLocation(newRiderLoc);
+        }
       }
 
       if (order.customer_lat && order.customer_lng) {
-        // Use stored delivery location instead of current phone location for the marker
         setUserLocation({
           latitude: Number(order.customer_lat),
           longitude: Number(order.customer_lng),
         });
       }
 
-      // Set cafe location based on customer's city
       if (order.customer_city) {
         setCafeLocation(getCafeLocation(order.customer_city));
       }
@@ -130,91 +152,131 @@ const MapScreen = () => {
   };
 
   const subscribeToOrder = () => {
+    console.log(`📡 [REALTIME] Subscribing to order: ${orderId}`);
     const subscription = supabase
       .channel(`order_tracking_${orderId}`)
       .on(
         "postgres_changes",
         {
-          event: "UPDATE",
+          event: "*", // Listen for ALL events (INSERT, UPDATE, DELETE)
           schema: "public",
           table: "orders",
           filter: `id=eq.${orderId}`,
         },
         (payload) => {
-          const newOrder = payload.new;
-          setOrderStatus(newOrder.status);
+          const newOrder = payload.new as any;
+          console.log("🔔 [REALTIME] Payload Received:", payload.eventType, newOrder?.status);
+          if (!newOrder) return;
+
+          // Set status immediately
+          if (newOrder.status) {
+            console.log("✅ [REALTIME] Updating status to:", newOrder.status);
+            setOrderStatus(newOrder.status.trim()); // Trim to be safe
+          }
+
           if (newOrder.rider_id) {
             fetchRiderInfo(newOrder.rider_id);
           }
-          if (newOrder.rider_lat && newOrder.rider_lng) {
-            setRiderLocation({
-              latitude: Number(newOrder.rider_lat),
-              longitude: Number(newOrder.rider_lng),
-            });
+
+          if (newOrder.rider_lat != null && newOrder.rider_lng != null) {
+            const lat = Number(newOrder.rider_lat);
+            const lng = Number(newOrder.rider_lng);
+            if (!isNaN(lat) && !isNaN(lng)) {
+              console.log("📍 [REALTIME] Rider Location Update:", lat, lng);
+              setRiderLocation({ latitude: lat, longitude: lng });
+            }
           }
         }
       )
-      .subscribe();
+      .subscribe((status, err) => {
+        console.log(`🔌 [REALTIME] Status: ${status}`, err ? `Error: ${err.message}` : "");
+      });
 
     return () => {
-      subscription.unsubscribe();
+      console.log("🔌 [REALTIME] Unsubscribing:", orderId);
+      supabase.removeChannel(subscription);
     };
   };
 
   const handleReceived = async () => {
-    const { data: order } = await supabase
-      .from("orders")
-      .select("*")
-      .eq("id", orderId)
-      .single();
-    if (!order) return;
-
-    // 1. Mark as completed
-    await supabase
-      .from("orders")
-      .update({ status: "completed" })
-      .eq("id", orderId);
-
-    // 2. Archive to completed_orders
-    const { error: archiveError } = await supabase
-      .from("completed_orders")
-      .insert({
-        order_id: orderId,
-        rider_id: order.rider_id,
-        user_id: order.user_id,
-        item_name: order.item_name,
-        total_price: order.total_price,
-      });
-
-    // 3. Update rider stats
-    if (!archiveError && order.rider_id) {
-      // Using increment logic via RPC or simple select/update
-      const { data: currentStats } = await supabase
-        .from("rider_stats")
+    try {
+      const { data: order } = await supabase
+        .from("orders")
         .select("*")
-        .eq("rider_id", order.rider_id)
+        .eq("id", orderId)
         .single();
-      if (currentStats) {
-        await supabase
-          .from("rider_stats")
-          .update({
-            total_earnings:
-              Number(currentStats.total_earnings) + Number(order.total_price),
-            total_deliveries: currentStats.total_deliveries + 1,
-            last_updated: new Date(),
-          })
-          .eq("rider_id", order.rider_id);
-      } else {
-        await supabase.from("rider_stats").insert({
-          rider_id: order.rider_id,
-          total_earnings: order.total_price,
-          total_deliveries: 1,
-        });
-      }
-    }
+      if (!order) return;
 
-    Alert.alert("Success", "Hope you enjoy your coffee!");
-    router.replace("/(tabs)/home");
+      // 1. Mark as completed
+      await supabase
+        .from("orders")
+        .update({ status: "completed" })
+        .eq("id", orderId);
+
+      // 2. Archive to completed_orders
+      const { error: archiveError } = await supabase
+        .from("completed_orders")
+        .insert({
+          order_id: orderId,
+          rider_id: order.rider_id,
+          user_id: order.user_id,
+          item_name: order.item_name,
+          total_price: order.total_price,
+        });
+
+      // 3. Update rider stats
+      if (!archiveError && order.rider_id) {
+        const { data: currentStats } = await supabase
+          .from("rider_stats")
+          .select("*")
+          .eq("rider_id", order.rider_id)
+          .single();
+        if (currentStats) {
+          await supabase
+            .from("rider_stats")
+            .update({
+              total_earnings:
+                Number(currentStats.total_earnings) + Number(order.total_price),
+              total_deliveries: currentStats.total_deliveries + 1,
+              last_updated: new Date(),
+            })
+            .eq("rider_id", order.rider_id);
+        } else {
+          await supabase.from("rider_stats").insert({
+            rider_id: order.rider_id,
+            total_earnings: order.total_price,
+            total_deliveries: 1,
+          });
+        }
+      }
+
+      Alert.alert("Success", "Hope you enjoy your coffee!");
+      router.replace("/(tabs)/home");
+    } catch (error) {
+      Alert.alert("Error", "Something went wrong confirming your order.");
+    }
+  };
+
+  const handleNotReceived = async () => {
+    Alert.alert(
+      "Order Not Received",
+      "We're sorry to hear that. Would you like to report this delivery issue?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Report Issue",
+          style: "destructive",
+          onPress: async () => {
+            await supabase
+              .from("orders")
+              .update({ status: "disputed" })
+              .eq("id", orderId);
+            Alert.alert("Reported", "Our team will investigate this delivery immediately.");
+            router.replace("/(tabs)/home");
+          }
+        }
+      ]
+    );
   };
 
   // Haversine distance
@@ -258,28 +320,36 @@ const MapScreen = () => {
     }
   };
 
+  const prevDistance = useRef<number>(0);
+
   useEffect(() => {
     if (userLocation) {
-      let dist;
+      let rawDist;
       if (riderLocation) {
-        dist = calculateDistance(
+        rawDist = Number(calculateDistance(
           riderLocation.latitude,
           riderLocation.longitude,
           userLocation.latitude,
           userLocation.longitude
-        );
+        ));
       } else {
-        dist = calculateDistance(
+        rawDist = Number(calculateDistance(
           cafeLocation.latitude,
           cafeLocation.longitude,
           userLocation.latitude,
           userLocation.longitude
-        );
+        ));
       }
-      setDistance(`${dist} km`);
-      // ETA calculation: dist / 20kmh * 60 min/h
-      const minutes = Math.ceil((Number(dist) / 20) * 60);
-      setEta(`${minutes} min`);
+
+      // Smoothing: only update state if change > 0.05km or first time
+      if (Math.abs(rawDist - prevDistance.current) > 0.05 || prevDistance.current === 0) {
+        prevDistance.current = rawDist;
+        setDistance(`${rawDist.toFixed(2)} km`);
+
+        // ETA calculation: dist / 20kmh * 60 min/h
+        const minutes = Math.ceil((rawDist / 20) * 60);
+        setEta(`${minutes} min`);
+      }
     }
   }, [userLocation, riderLocation, cafeLocation]);
 
@@ -307,116 +377,110 @@ const MapScreen = () => {
     }
   };
 
+  const hasInitiallyFitted = useRef(false);
+  const prevRiderLoc = useRef<any>(null);
+
   useEffect(() => {
     if (!loading && (userLocation || riderLocation)) {
-      fitMap();
+      if (!hasInitiallyFitted.current) {
+        fitMap();
+        hasInitiallyFitted.current = true;
+      } else if (riderLocation && !prevRiderLoc.current) {
+        // Re-fit when rider first appears
+        fitMap();
+      }
+      prevRiderLoc.current = riderLocation;
     }
   }, [loading, userLocation, riderLocation, orderStatus]);
 
-  /* New state for route coordinates */
-  const [routeCoordinates, setRouteCoordinates] = useState<
-    { latitude: number; longitude: number }[]
-  >([]);
-
+  // Separate effect for smooth rider tracking
   useEffect(() => {
-    const updateRoute = async () => {
-      let start, end;
-
-      // Logic:
-      // 1. Pending/Approved -> Cafe to User
-      // 2. Accepted -> Rider to Cafe
-      // 3. Picked Up/Delivered -> Rider to User
-
-      if (orderStatus === "pending" || orderStatus === "approved") {
-        start = cafeLocation;
-        end = userLocation;
-      } else if (orderStatus === "accepted") {
-        start = riderLocation || cafeLocation;
-        end = cafeLocation;
-      } else {
-        start = riderLocation || cafeLocation;
-        end = userLocation;
-      }
-
-      if (start && end) {
-        const { getRoute } = require("../../utils/routing");
-        const coords = await getRoute(
-          start.latitude,
-          start.longitude,
-          end.latitude,
-          end.longitude
-        );
-        setRouteCoordinates(coords);
-      }
-    };
-
-    updateRoute();
-  }, [riderLocation, userLocation, orderStatus, cafeLocation]);
+    if (riderLocation && mapRef.current && hasInitiallyFitted.current) {
+      // Don't fit every time, just ensure markers stay in view or use a more subtle approach
+      // For now, let's just let the user pan freely if they want, but show the rider moving.
+    }
+  }, [riderLocation]);
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <View style={styles.container}>
-        <MapView
-          ref={mapRef}
-          style={styles.map}
-          mapType={mapType}
-          initialRegion={{
-            latitude: cafeLocation.latitude,
-            longitude: cafeLocation.longitude,
-            latitudeDelta: 0.05,
-            longitudeDelta: 0.05,
-          }}
-        >
-          <Marker
-            coordinate={{
+        {(orderStatus !== "completed" && orderStatus !== "cancelled") && (
+          <MapView
+            ref={mapRef}
+            style={styles.map}
+            mapType={mapType}
+            initialRegion={{
               latitude: cafeLocation.latitude,
               longitude: cafeLocation.longitude,
+              latitudeDelta: 0.05,
+              longitudeDelta: 0.05,
             }}
-            title={cafeLocation.name}
           >
-            <View style={styles.markerContainer}>
-              <View style={styles.shopMarkerCircle}>
-                <Ionicons name="cafe" size={16} color="white" />
+            {/* 1. Cafe Marker */}
+            <Marker
+              coordinate={{
+                latitude: cafeLocation.latitude,
+                longitude: cafeLocation.longitude,
+              }}
+              title={cafeLocation.name}
+            >
+              <View style={styles.markerContainer}>
+                <View style={styles.shopMarkerCircle}>
+                  <Ionicons name="cafe" size={16} color="white" />
+                </View>
               </View>
+            </Marker>
+
+            {/* 2. User Marker */}
+            {userLocation && (
+              <Marker coordinate={userLocation} title="Your Location">
+                <View style={styles.userMarkerCircle}>
+                  <Ionicons name="person" size={18} color="white" />
+                </View>
+              </Marker>
+            )}
+
+            {/* 3. Rider Marker */}
+            {riderLocation && (
+              <Marker coordinate={riderLocation} title="Rider Location">
+                <View style={styles.riderMarkerCircle}>
+                  <MaterialCommunityIcons name="bike" size={24} color="white" />
+                </View>
+              </Marker>
+            )}
+
+            {/* 4. Live Tracking Polyline */}
+            {riderLocation && (
+              <>
+                {orderStatus === 'accepted' && (
+                  <RoutePolyline start={riderLocation} end={cafeLocation} />
+                )}
+                {(orderStatus === 'picked_up' || orderStatus === 'delivered') && userLocation && (
+                  <RoutePolyline start={riderLocation} end={userLocation} />
+                )}
+              </>
+            )}
+          </MapView>
+        )}
+
+        {(orderStatus !== "completed" && orderStatus !== "cancelled") && (
+          <View style={styles.header}>
+            <TouchableOpacity
+              style={[styles.iconBox, { backgroundColor: theme.surface }]}
+              onPress={() => router.back()}
+            >
+              <Ionicons name="chevron-back" size={24} color={theme.text} />
+            </TouchableOpacity>
+            <View style={{ gap: 10 }}>
+              <TouchableOpacity style={[styles.iconBox, { backgroundColor: theme.surface }]} onPress={locateSelf}>
+                <Ionicons name="locate" size={24} color={theme.text} />
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.iconBox, { backgroundColor: theme.surface }]} onPress={fitMap}>
+                <Ionicons name="map" size={24} color={theme.text} />
+              </TouchableOpacity>
             </View>
-          </Marker>
-
-          {userLocation && (
-            <Marker coordinate={userLocation} title="Your Location">
-              <View style={styles.userMarkerCircle}>
-                <Ionicons name="person" size={18} color="white" />
-              </View>
-            </Marker>
-          )}
-
-          {riderLocation && (
-            <Marker coordinate={riderLocation} title="Rider Location">
-              <View style={styles.riderMarkerCircle}>
-                <MaterialCommunityIcons name="bike" size={24} color="white" />
-              </View>
-            </Marker>
-          )}
-
-          {routeCoordinates.length > 0 && (
-            <Polyline
-              coordinates={routeCoordinates}
-              strokeColor="#C67C4E"
-              strokeWidth={4}
-            />
-          )}
-        </MapView>
-
-        <View style={styles.header}>
-          <TouchableOpacity
-            style={[styles.iconBox, { backgroundColor: theme.surface }]}
-            onPress={() => router.back()}
-          >
-            <Ionicons name="chevron-back" size={24} color={theme.text} />
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.iconBox, { backgroundColor: theme.surface }]} onPress={locateSelf}>
-            <Ionicons name="locate" size={24} color={theme.text} />
-          </TouchableOpacity>
-        </View>
+          </View>
+        )}
 
         <BottomSheet
           ref={bottomSheetRef}
@@ -433,7 +497,7 @@ const MapScreen = () => {
                 <Animated.View layout={Layout.springify()}>
                   <Text style={[styles.statusTitle, { color: theme.text }]}>
                     {orderStatus === "delivered"
-                      ? "📍 Rider has arrived!"
+                      ? "📍 Waiting for confirmation..." // Updated text
                       : orderStatus === "picked_up"
                         ? "🚴 Rider is on the way!"
                         : orderStatus === "accepted"
@@ -458,47 +522,20 @@ const MapScreen = () => {
                 )}
 
                 <View style={styles.progressRow}>
+                  {/* Dot 1: Approved */}
                   <View style={[styles.dot, { backgroundColor: theme.primary }]} />
-                  <View
-                    style={[
-                      styles.line,
-                      {
-                        backgroundColor:
-                          ["accepted", "picked_up", "delivered"].includes(orderStatus)
-                            ? theme.primary
-                            : theme.border,
-                      },
-                    ]}
-                  />
-                  <View
-                    style={[
-                      styles.dot,
-                      {
-                        backgroundColor:
-                          ["accepted", "picked_up", "delivered"].includes(orderStatus)
-                            ? theme.primary
-                            : theme.border,
-                      },
-                    ]}
-                  />
-                  <View
-                    style={[
-                      styles.line,
-                      {
-                        backgroundColor:
-                          orderStatus === "delivered" ? theme.primary : theme.border,
-                      },
-                    ]}
-                  />
-                  <View
-                    style={[
-                      styles.dot,
-                      {
-                        backgroundColor:
-                          orderStatus === "delivered" ? theme.primary : theme.border,
-                      },
-                    ]}
-                  />
+                  <View style={[styles.line, { backgroundColor: ["accepted", "picked_up", "delivered"].includes(orderStatus) ? theme.primary : theme.border }]} />
+
+                  {/* Dot 2: Accepted */}
+                  <View style={[styles.dot, { backgroundColor: ["accepted", "picked_up", "delivered"].includes(orderStatus) ? theme.primary : theme.border }]} />
+                  <View style={[styles.line, { backgroundColor: ["picked_up", "delivered"].includes(orderStatus) ? theme.primary : theme.border }]} />
+
+                  {/* Dot 3: Picked Up */}
+                  <View style={[styles.dot, { backgroundColor: ["picked_up", "delivered"].includes(orderStatus) ? theme.primary : theme.border }]} />
+                  <View style={[styles.line, { backgroundColor: orderStatus === "delivered" ? theme.primary : theme.border }]} />
+
+                  {/* Dot 4: Delivered */}
+                  <View style={[styles.dot, { backgroundColor: orderStatus === "delivered" ? theme.primary : theme.border }]} />
                 </View>
 
                 <View style={[styles.profile, { backgroundColor: theme.background, borderColor: theme.border }]}>
@@ -528,12 +565,20 @@ const MapScreen = () => {
                 </View>
 
                 {orderStatus === "delivered" && (
-                  <TouchableOpacity
-                    style={styles.receiveBtn}
-                    onPress={handleReceived}
-                  >
-                    <Text style={styles.receiveBtnText}>Order Received</Text>
-                  </TouchableOpacity>
+                  <View style={styles.confirmRow}>
+                    <TouchableOpacity
+                      style={[styles.confirmBtn, styles.notReceivedBtn]}
+                      onPress={handleNotReceived}
+                    >
+                      <Text style={styles.notReceivedText}>Not Received</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.confirmBtn, styles.receivedBtn]}
+                      onPress={handleReceived}
+                    >
+                      <Text style={styles.receivedBtnText}>Received</Text>
+                    </TouchableOpacity>
+                  </View>
                 )}
               </Animated.View>
             )}
@@ -668,23 +713,40 @@ const styles = StyleSheet.create({
     color: "#C67C4E",
     fontWeight: "bold",
   },
-  receiveBtn: {
-    backgroundColor: "#C67C4E",
+  receivedBtnText: {
+    color: "white",
+    fontSize: responsiveFontSize(1.8),
+    fontWeight: "bold",
+  },
+  confirmRow: {
+    flexDirection: "row",
     width: "100%",
-    height: 56,
+    gap: 12,
+    marginTop: responsiveHeight(2.5),
+  },
+  confirmBtn: {
+    flex: 1,
+    height: 54,
     borderRadius: 16,
     justifyContent: "center",
     alignItems: "center",
-    marginTop: responsiveHeight(2.5),
-    shadowColor: "#C67C4E",
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 4,
   },
-  receiveBtnText: {
-    color: "white",
-    fontSize: responsiveFontSize(2),
+  receivedBtn: {
+    backgroundColor: "#C67C4E",
+    shadowColor: "#C67C4E",
+  },
+  notReceivedBtn: {
+    backgroundColor: "#F5F5F5",
+    borderWidth: 1,
+    borderColor: "#EAEAEA",
+  },
+  notReceivedText: {
+    color: "#F44336",
+    fontSize: responsiveFontSize(1.8),
     fontWeight: "bold",
   },
 });

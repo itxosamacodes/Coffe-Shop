@@ -149,6 +149,7 @@ export default function RiderDashboard() {
     };
 
     const renderOrderItem = ({ item }: { item: any }) => {
+        const status = item.status?.trim().toLowerCase();
         const dist = riderLocation && item.customer_lat && item.customer_lng
             ? calculateDistance(riderLocation.latitude, riderLocation.longitude, item.customer_lat, item.customer_lng)
             : null;
@@ -156,8 +157,8 @@ export default function RiderDashboard() {
         return (
             <View style={styles.orderCard}>
                 <View style={styles.cardHeader}>
-                    <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}>
-                        <Text style={styles.statusText}>{item.status.replace('_', ' ').toUpperCase()}</Text>
+                    <View style={[styles.statusBadge, { backgroundColor: getStatusColor(status) }]}>
+                        <Text style={styles.statusText}>{status?.replace('_', ' ').toUpperCase()}</Text>
                     </View>
                     <Text style={styles.timeText}>{new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
                 </View>
@@ -195,7 +196,7 @@ export default function RiderDashboard() {
 
                 <View style={styles.buttonRow}>
                     {renderActionButton(item)}
-                    {(item.status === 'accepted' || item.status === 'picked_up') && (
+                    {(status === 'accepted' || status === 'picked_up') && (
                         <TouchableOpacity
                             style={styles.trackBtn}
                             onPress={() => {
@@ -223,35 +224,41 @@ export default function RiderDashboard() {
 
     const renderActionButton = (item: any) => {
         if (!item) return null;
-        if (item.status === 'approved') {
+        const status = item.status?.trim().toLowerCase();
+
+        if (status === 'approved') {
             return (
                 <TouchableOpacity style={styles.actionBtn} onPress={() => updateOrderStatus(item.id, 'accepted')}>
                     <Text style={styles.actionBtnText}>Accept Order</Text>
                 </TouchableOpacity>
             );
         }
-        if (item.status === 'accepted') {
+        if (status === 'accepted') {
             return (
                 <TouchableOpacity style={[styles.actionBtn, { backgroundColor: '#C87941', flex: 1 }]} onPress={() => updateOrderStatus(item.id, 'picked_up')}>
                     <Text style={styles.actionBtnText}>Pick Up Order</Text>
                 </TouchableOpacity>
             );
         }
-        if (item.status === 'picked_up') {
+        if (status === 'picked_up') {
             return (
                 <TouchableOpacity style={[styles.actionBtn, { backgroundColor: '#4CAF50', flex: 1 }]} onPress={() => updateOrderStatus(item.id, 'delivered')}>
                     <Text style={styles.actionBtnText}>Mark as Delivered</Text>
                 </TouchableOpacity>
             );
         }
-        if (item.status === 'delivered') {
+        if (status === 'delivered') {
             return (
                 <View style={styles.waitingBadge}>
                     <Text style={styles.waitingText}>Waiting for confirmation...</Text>
                 </View>
             );
         }
-        return null;
+        return (
+            <View style={styles.waitingBadge}>
+                <Text style={styles.waitingText}>{status?.toUpperCase() || "..."}</Text>
+            </View>
+        );
     };
 
     return (
@@ -372,6 +379,7 @@ export default function RiderDashboard() {
                     </View>
                 </View>
             </Modal>
+
         </View>
     );
 }

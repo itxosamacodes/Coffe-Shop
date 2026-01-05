@@ -68,9 +68,10 @@ export const riderService = {
 
     async fetchStats(userId: string) {
         const { data: completed, error } = await supabase
-            .from('completed_orders')
+            .from('orders')
             .select('total_price, created_at')
-            .eq('rider_id', userId);
+            .eq('rider_id', userId)
+            .eq('status', 'completed');
 
         if (error) throw error;
 

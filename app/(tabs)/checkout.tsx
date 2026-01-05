@@ -22,12 +22,16 @@ import {
     responsiveHeight,
     responsiveWidth
 } from "react-native-responsive-dimensions";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useTheme } from "../../context/ThemeContext";
 import { AVAILABLE_CITIES, getCafeLocation } from "../../utils/cafeLocations";
 import { supabase } from "../../utils/supabase";
 
 
 const Checkout = () => {
     const params = useLocalSearchParams();
+    const { theme, isDark } = useTheme();
+    const insets = useSafeAreaInsets();
 
     // Safely extract params
     const coffeImg = params.coffeImg;
@@ -184,40 +188,45 @@ const Checkout = () => {
     };
 
     return (
-        <View style={styles.container}>
-            {/* Header */}
-            <View style={styles.header}>
-                <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-                    <Ionicons name="chevron-back" size={28} color="black" />
+        <View style={[styles.container, { backgroundColor: theme.background }]}>
+            {/* Redesigned Header */}
+            <View style={[styles.header, {
+                backgroundColor: theme.background,
+                paddingTop: insets.top + 10,
+                borderBottomWidth: 1,
+                borderBottomColor: theme.border
+            }]}>
+                <TouchableOpacity onPress={() => router.back()} style={styles.headerBtn}>
+                    <Ionicons name="chevron-back" size={24} color={theme.text} />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>Review Order</Text>
-                <View style={{ width: 44 }} />
+                <Text style={[styles.headerTitle, { color: theme.text }]}>Review Order</Text>
+                <View style={styles.headerBtn} />
             </View>
 
             <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
                 {/* Delivery Address Section */}
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Delivery Address</Text>
-                    <View style={styles.addressBox}>
+                    <Text style={[styles.sectionTitle, { color: theme.text }]}>Delivery Address</Text>
+                    <View style={[styles.addressBox, { backgroundColor: theme.surface, borderColor: theme.border }]}>
                         <View style={styles.addressIcon}>
-                            <Ionicons name="location" size={22} color="#C67C4E" />
+                            <Ionicons name="location" size={22} color={theme.primary} />
                         </View>
                         <View style={{ flex: 1, marginLeft: 12 }}>
-                            <Text style={styles.addressLabel}>Delivery Destination</Text>
-                            <Text style={styles.addressText} numberOfLines={2}>
+                            <Text style={[styles.addressLabel, { color: theme.textMuted }]}>Delivery Destination</Text>
+                            <Text style={[styles.addressText, { color: theme.text }]} numberOfLines={2}>
                                 {userInfo.address || "Please select your address"}
                             </Text>
                         </View>
                         <TouchableOpacity style={styles.editBtn} onPress={() => setModalVisible(true)}>
-                            <Ionicons name="create-outline" size={20} color="#C67C4E" />
+                            <Ionicons name="create-outline" size={20} color={theme.primary} />
                         </TouchableOpacity>
                     </View>
                 </View>
 
                 {/* Order Summary Section */}
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Selected Item</Text>
-                    <View style={styles.orderCard}>
+                    <Text style={[styles.sectionTitle, { color: theme.text }]}>Selected Item</Text>
+                    <View style={[styles.orderCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
                         {coffeImg && (
                             <Image
                                 source={
@@ -233,16 +242,16 @@ const Checkout = () => {
                             />
                         )}
                         <View style={{ flex: 1, marginLeft: 15 }}>
-                            <Text style={styles.orderName}>{coffeName}</Text>
-                            <Text style={styles.orderSub}>With Deep Foam</Text>
+                            <Text style={[styles.orderName, { color: theme.text }]}>{coffeName}</Text>
+                            <Text style={[styles.orderSub, { color: theme.textMuted }]}>With Deep Foam</Text>
                         </View>
                         <View style={styles.qtyBox}>
                             <TouchableOpacity onPress={() => setQuantity(Math.max(1, quantity - 1))}>
-                                <Ionicons name="remove-circle-outline" size={26} color="#C67C4E" />
+                                <Ionicons name="remove-circle-outline" size={26} color={theme.primary} />
                             </TouchableOpacity>
-                            <Text style={styles.qtyText}>{quantity}</Text>
+                            <Text style={[styles.qtyText, { color: theme.text }]}>{quantity}</Text>
                             <TouchableOpacity onPress={() => setQuantity(quantity + 1)}>
-                                <Ionicons name="add-circle-outline" size={26} color="#C67C4E" />
+                                <Ionicons name="add-circle-outline" size={26} color={theme.primary} />
                             </TouchableOpacity>
                         </View>
                     </View>
@@ -251,17 +260,17 @@ const Checkout = () => {
                 {/* Pricing Summary Section */}
                 <View style={styles.section}>
                     <View style={styles.priceRow}>
-                        <Text style={styles.priceLabel}>Items Subtotal</Text>
-                        <Text style={styles.priceValue}>${(parsedPrice * quantity).toFixed(2)}</Text>
+                        <Text style={[styles.priceLabel, { color: theme.text }]}>Items Subtotal</Text>
+                        <Text style={[styles.priceValue, { color: theme.text }]}>${(parsedPrice * quantity).toFixed(2)}</Text>
                     </View>
                     <View style={styles.priceRow}>
-                        <Text style={styles.priceLabel}>Delivery Charge ($0.2/km)</Text>
-                        <Text style={styles.priceValue}>${deliveryFee.toFixed(2)}</Text>
+                        <Text style={[styles.priceLabel, { color: theme.text }]}>Delivery Charge ($0.2/km)</Text>
+                        <Text style={[styles.priceValue, { color: theme.text }]}>${deliveryFee.toFixed(2)}</Text>
                     </View>
-                    <View style={styles.divider} />
+                    <View style={[styles.divider, { backgroundColor: theme.border }]} />
                     <View style={styles.priceRow}>
-                        <Text style={styles.totalLabel}>Total Payment</Text>
-                        <Text style={styles.totalValue}>${(parsedPrice * quantity + deliveryFee).toFixed(2)}</Text>
+                        <Text style={[styles.totalLabel, { color: theme.text }]}>Total Payment</Text>
+                        <Text style={[styles.totalValue, { color: theme.primary }]}>${(parsedPrice * quantity + deliveryFee).toFixed(2)}</Text>
                     </View>
                 </View>
             </ScrollView>
@@ -274,67 +283,69 @@ const Checkout = () => {
                 onRequestClose={() => setModalVisible(false)}
             >
                 <View style={styles.modalOverlay}>
-                    <View style={styles.modalContent}>
+                    <View style={[styles.modalContent, { backgroundColor: theme.surface }]}>
                         <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>Delivery Details</Text>
+                            <Text style={[styles.modalTitle, { color: theme.text }]}>Delivery Details</Text>
                             <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.closeBtn}>
-                                <Ionicons name="close" size={24} color="black" />
+                                <Ionicons name="close" size={24} color={theme.text} />
                             </TouchableOpacity>
                         </View>
 
                         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
-                            <Text style={styles.inputLabel}>Full Name</Text>
-                            <View style={styles.inputContainer}>
-                                <Ionicons name="person-outline" size={20} color="#999" style={styles.inputIcon} />
+                            <Text style={[styles.inputLabel, { color: theme.text }]}>Full Name</Text>
+                            <View style={[styles.inputContainer, { backgroundColor: theme.searchBg, borderColor: theme.border }]}>
+                                <Ionicons name="person-outline" size={20} color={theme.searchIcon} style={styles.inputIcon} />
                                 <TextInput
-                                    style={styles.textInput}
+                                    style={[styles.textInput, { color: theme.text }]}
                                     placeholder="Full Name"
-                                    placeholderTextColor="#999"
+                                    placeholderTextColor={theme.searchIcon}
                                     value={userInfo.name}
                                     onChangeText={(text) => setUserInfo(p => ({ ...p, name: text }))}
                                 />
                             </View>
 
-                            <Text style={styles.inputLabel}>Email Address</Text>
-                            <View style={styles.inputContainer}>
-                                <Ionicons name="mail-outline" size={20} color="#999" style={styles.inputIcon} />
+                            <Text style={[styles.inputLabel, { color: theme.text }]}>Email Address</Text>
+                            <View style={[styles.inputContainer, { backgroundColor: theme.searchBg, borderColor: theme.border }]}>
+                                <Ionicons name="mail-outline" size={20} color={theme.searchIcon} style={styles.inputIcon} />
                                 <TextInput
-                                    style={styles.textInput}
+                                    style={[styles.textInput, { color: theme.text }]}
                                     placeholder="Email Address"
-                                    placeholderTextColor="#999"
+                                    placeholderTextColor={theme.searchIcon}
                                     keyboardType="email-address"
                                     value={userInfo.email}
                                     onChangeText={(text) => setUserInfo(p => ({ ...p, email: text }))}
                                 />
                             </View>
 
-                            <Text style={styles.inputLabel}>Phone Number</Text>
-                            <View style={styles.inputContainer}>
-                                <Ionicons name="call-outline" size={20} color="#999" style={styles.inputIcon} />
+                            <Text style={[styles.inputLabel, { color: theme.text }]}>Phone Number</Text>
+                            <View style={[styles.inputContainer, { backgroundColor: theme.searchBg, borderColor: theme.border }]}>
+                                <Ionicons name="call-outline" size={20} color={theme.searchIcon} style={styles.inputIcon} />
                                 <TextInput
-                                    style={styles.textInput}
+                                    style={[styles.textInput, { color: theme.text }]}
                                     placeholder="Phone Number"
-                                    placeholderTextColor="#999"
+                                    placeholderTextColor={theme.searchIcon}
                                     keyboardType="phone-pad"
                                     value={userInfo.phone}
                                     onChangeText={(text) => setUserInfo(p => ({ ...p, phone: text }))}
                                 />
                             </View>
 
-                            <Text style={styles.inputLabel}>Select City</Text>
+                            <Text style={[styles.inputLabel, { color: theme.text }]}>Select City</Text>
                             <View style={styles.cityPickerRow}>
                                 {AVAILABLE_CITIES.map((city) => (
                                     <TouchableOpacity
                                         key={city}
                                         style={[
                                             styles.cityOption,
-                                            selectedCity === city && styles.cityOptionSelected
+                                            { backgroundColor: theme.searchBg, borderColor: theme.border },
+                                            selectedCity === city && { backgroundColor: isDark ? "rgba(198, 124, 78, 0.2)" : "#F9F2ED", borderColor: theme.primary }
                                         ]}
                                         onPress={() => setSelectedCity(city)}
                                     >
                                         <Text style={[
                                             styles.cityOptionText,
-                                            selectedCity === city && styles.cityOptionTextSelected
+                                            { color: theme.textMuted },
+                                            selectedCity === city && { color: theme.primary }
                                         ]}>
                                             {city}
                                         </Text>
@@ -343,26 +354,26 @@ const Checkout = () => {
                             </View>
 
                             <View style={styles.addressLabelRow}>
-                                <Text style={styles.inputLabel}>Detailed Address</Text>
+                                <Text style={[styles.inputLabel, { color: theme.text }]}>Detailed Address</Text>
                                 <TouchableOpacity
                                     onPress={getCurrentLocation}
                                     disabled={locationLoading}
                                     style={styles.locationLink}
                                 >
                                     {locationLoading ? (
-                                        <ActivityIndicator size="small" color="#C67C4E" />
+                                        <ActivityIndicator size="small" color={theme.primary} />
                                     ) : (
                                         <>
-                                            <Ionicons name="locate" size={16} color="#C67C4E" />
-                                            <Text style={styles.locationLinkText}>Use Current</Text>
+                                            <Ionicons name="locate" size={16} color={theme.primary} />
+                                            <Text style={[styles.locationLinkText, { color: theme.primary }]}>Use Current</Text>
                                         </>
                                     )}
                                 </TouchableOpacity>
                             </View>
                             <TextInput
-                                style={[styles.textInput, styles.textArea]}
+                                style={[styles.textInput, styles.textArea, { backgroundColor: theme.searchBg, borderColor: theme.border, color: theme.text }]}
                                 placeholder="123 Coffee St, Bean Town..."
-                                placeholderTextColor="#999"
+                                placeholderTextColor={theme.searchIcon}
                                 multiline
                                 numberOfLines={3}
                                 value={userInfo.address}
@@ -386,16 +397,16 @@ const Checkout = () => {
             </Modal>
 
             {/* Persistent Bottom Section */}
-            <View style={styles.footer}>
-                <View style={styles.paymentPreview}>
-                    <View style={styles.walletBadge}>
-                        <Ionicons name="wallet-outline" size={24} color="#C67C4E" />
+            <View style={[styles.footer, { backgroundColor: theme.surface }]}>
+                <View style={[styles.paymentPreview, { backgroundColor: theme.searchBg }]}>
+                    <View style={[styles.walletBadge, { backgroundColor: isDark ? "rgba(198, 124, 78, 0.2)" : "#F9F2ED" }]}>
+                        <Ionicons name="wallet-outline" size={24} color={theme.primary} />
                     </View>
                     <View style={{ flex: 1, marginLeft: 12 }}>
-                        <Text style={styles.paymentMethod}>Cash on Delivery</Text>
-                        <Text style={styles.paymentAmount}>Total: ${(parsedPrice * quantity + deliveryFee).toFixed(2)}</Text>
+                        <Text style={[styles.paymentMethod, { color: theme.text }]}>Cash on Delivery</Text>
+                        <Text style={[styles.paymentAmount, { color: theme.primary }]}>Total: ${(parsedPrice * quantity + deliveryFee).toFixed(2)}</Text>
                     </View>
-                    <Ionicons name="chevron-forward" size={18} color="#999" />
+                    <Ionicons name="chevron-forward" size={18} color={theme.searchIcon} />
                 </View>
 
                 <TouchableOpacity
@@ -412,25 +423,24 @@ const Checkout = () => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: "#FDFDFD",
-        paddingTop: responsiveHeight(7),
     },
     header: {
         flexDirection: "row",
+        justifyContent: "space-between",
         alignItems: "center",
-        paddingHorizontal: responsiveWidth(5),
-        marginBottom: 10,
+        paddingHorizontal: responsiveWidth(6),
+        paddingBottom: 15,
     },
-    backBtn: {
-        padding: 8,
-        marginLeft: -8,
+    headerBtn: {
+        width: 44,
+        height: 44,
+        borderRadius: 12,
+        justifyContent: "center",
+        alignItems: "center",
     },
     headerTitle: {
-        flex: 1,
-        textAlign: "center",
-        fontSize: 20,
+        fontSize: 18,
         fontWeight: "700",
-        color: "#2F2D2C",
     },
     scrollContent: {
         paddingHorizontal: responsiveWidth(5),

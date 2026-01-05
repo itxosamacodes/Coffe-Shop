@@ -14,7 +14,9 @@ import {
   responsiveHeight,
   responsiveWidth,
 } from "react-native-responsive-dimensions";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFavorites } from "../../context/FavoritesContext";
+import { useTheme } from "../../context/ThemeContext";
 
 const Detail = () => {
   const { coffeImg, coffeName, coffePrice, location } =
@@ -33,6 +35,9 @@ const Detail = () => {
     { img: require("../../assets/detailsImg/img3.png") },
   ];
 
+  const { theme, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
+
   const Size = [
     {
       size: "S",
@@ -48,26 +53,35 @@ const Detail = () => {
     },
   ];
   return (
-    <View style={styles.Container}>
-      {/* Header  */}
-      <View style={styles.header}>
+    <View style={[styles.Container, { backgroundColor: theme.background }]}>
+      {/* Redesigned Header */}
+      <View style={[styles.header, {
+        backgroundColor: theme.background,
+        paddingTop: insets.top + 10,
+        borderBottomWidth: 1,
+        borderBottomColor: theme.border
+      }]}>
         <TouchableOpacity
           onPress={() => {
             router.back();
           }}
+          style={styles.headerBtn}
         >
-          <Ionicons name="chevron-back" size={32} color={"black"} />
+          <Ionicons name="chevron-back" size={24} color={theme.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitel}>Detail</Text>
-        <TouchableOpacity onPress={() => toggleFavorite({ name: coffeName, subTitle: "Hot", price: coffePrice, image: coffeImg })}>
+        <Text style={[styles.headerTitle, { color: theme.text }]}>Detail</Text>
+        <TouchableOpacity
+          onPress={() => toggleFavorite({ name: coffeName, subTitle: "Hot", price: coffePrice, image: coffeImg })}
+          style={styles.headerBtn}
+        >
           <Ionicons
             name={isFavorite(coffeName) ? "heart" : "heart-outline"}
-            size={32}
-            color={isFavorite(coffeName) ? "#C67C4E" : "black"}
+            size={24}
+            color={isFavorite(coffeName) ? theme.primary : theme.text}
           />
         </TouchableOpacity>
       </View>
-      <ScrollView>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Image  */}
         <View style={styles.img}>
           <Image
@@ -91,8 +105,8 @@ const Detail = () => {
           <View style={styles.CoffeeDetails}>
             {/* left side things */}
             <View style={styles.leftsidethings}>
-              <Text style={styles.coffeetitel}>{coffeName}</Text>
-              <Text style={styles.subTitel}>Hot</Text>
+              <Text style={[styles.coffeetitel, { color: theme.text }]}>{coffeName}</Text>
+              <Text style={[styles.subTitel, { color: theme.textMuted }]}>Hot</Text>
             </View>
             {/* right side */}
             <View style={styles.rightSide}>
@@ -107,20 +121,20 @@ const Detail = () => {
             style={{
               top: 22,
               height: 0.8,
-              backgroundColor: "grey",
+              backgroundColor: theme.border,
               width: "100%",
             }}
           />
         </View>
         {/* Description start here */}
         <View style={styles.descriptionBox}>
-          <Text style={styles.desTitel}>Description</Text>
-          <Text style={styles.description}>
+          <Text style={[styles.desTitel, { color: theme.text }]}>Description</Text>
+          <Text style={[styles.description, { color: theme.textMuted }]}>
             A cappuccino is an approximately 150 ml (5 oz) beverage, with 25 ml
             of espresso coffee and 85ml of fresh milk the fo...
             <Text
               style={{
-                color: "#C67C4E",
+                color: theme.primary,
                 fontWeight: "600",
                 fontSize: responsiveFontSize(2),
               }}
@@ -137,7 +151,8 @@ const Detail = () => {
                 key={index}
                 style={[
                   styles.buttonBox,
-                  button === item.size && styles.activeButton,
+                  { backgroundColor: theme.surface, borderColor: theme.border },
+                  button === item.size && { backgroundColor: isDark ? "rgba(198, 124, 78, 0.2)" : "#F9F2ED", borderColor: theme.primary, borderWidth: 1.5 },
                 ]}
                 onPress={() => {
                   setButton(item.size);
@@ -148,6 +163,7 @@ const Detail = () => {
                   style={{
                     fontSize: responsiveFontSize(2.5),
                     fontWeight: "500",
+                    color: button === item.size ? theme.primary : theme.text,
                   }}
                 >
                   {item.size}
@@ -158,10 +174,10 @@ const Detail = () => {
         </View>
       </ScrollView>
       {/* Bottom Button */}
-      <View style={styles.bottom}>
+      <View style={[styles.bottom, { backgroundColor: theme.surface }]}>
         <View style={styles.priceCol}>
-          <Text style={styles.Ptitel}>Price</Text>
-          <Text style={styles.Price}>${price}</Text>
+          <Text style={[styles.Ptitel, { color: theme.textMuted }]}>Price</Text>
+          <Text style={[styles.Price, { color: theme.primary }]}>${price}</Text>
         </View>
         <View></View>
         <TouchableOpacity
@@ -184,7 +200,7 @@ const Detail = () => {
           </Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </View >
   );
 };
 
@@ -192,21 +208,29 @@ export default Detail;
 
 const styles = StyleSheet.create({
   Container: {
-    backgroundColor: "#F9F9F9",
     flex: 1,
-    paddingTop: responsiveHeight(6.5),
-    alignItems: "center",
-    paddingHorizontal: responsiveWidth(5),
   },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
-    width: "100%",
-    marginBottom: responsiveHeight(2),
+    alignItems: "center",
+    paddingHorizontal: responsiveWidth(6),
+    paddingBottom: 15,
   },
-  headerTitel: {
-    fontSize: responsiveFontSize(2.2),
-    fontWeight: "500",
+  headerBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+  },
+  scrollContent: {
+    paddingHorizontal: responsiveWidth(6.5),
+    paddingBottom: responsiveHeight(12),
   },
   img: {
     alignItems: "center",
@@ -316,7 +340,6 @@ const styles = StyleSheet.create({
   },
   bottom: {
     position: "absolute",
-    backgroundColor: "#F9F9F9",
     height: responsiveHeight(11),
     width: "110%",
     borderTopLeftRadius: 20,

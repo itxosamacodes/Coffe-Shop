@@ -21,20 +21,20 @@ export const Colors = {
         isDark: false,
     },
     dark: {
-        background: "#050505",
-        surface: "#111111",
-        header: "#131313",
+        background: "#0C0C0C", // Deep noir but with a hint of depth
+        surface: "#111111",    // Elevated surface
+        header: "#0C0C0C",
         text: "#FFFFFF",
         textMuted: "#A2A2A2",
-        border: "rgba(255,255,255,0.05)",
+        border: "rgba(255,255,255,0.06)",
         card: "#111111",
         primary: "#C67C4E",
         error: "#FF4B4B",
         success: "#4CAF50",
-        tabBar: "#0D0D0D",
+        tabBar: "#111111",
         tabInactive: "#666666",
-        searchBg: "#222222",
-        searchIcon: "#666666",
+        searchBg: "#1A1A1A",
+        searchIcon: "#777777",
         label: "#FFFFFF",
         isDark: true,
     }

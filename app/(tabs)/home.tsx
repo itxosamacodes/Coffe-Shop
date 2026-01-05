@@ -12,16 +12,21 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
 import { Dropdown } from "react-native-element-dropdown";
 import Animated, {
-  FadeInDown
+  FadeInDown,
+  interpolate,
+  useAnimatedScrollHandler,
+  useAnimatedStyle,
+  useSharedValue,
 } from "react-native-reanimated";
 import {
   responsiveHeight,
   responsiveWidth
 } from "react-native-responsive-dimensions";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../../context/ThemeContext";
 import { supabase } from "../../utils/supabase";
 
@@ -38,19 +43,13 @@ const BANNERS = [
     id: 2,
     title: "The Perfect Pour Over",
     tag: "Exclusive",
-    image: "https://images.unsplash.com/photo-1497933321027-94483ef36b33?auto=format&fit=crop&q=80&w=800",
+    image: "https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&q=80&w=800",
   },
   {
     id: 3,
     title: "Morning Fuel: 20% Off",
     tag: "Special",
     image: "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&q=80&w=800",
-  },
-  {
-    id: 4,
-    title: "Chilled Bliss Every Day",
-    tag: "Featured",
-    image: "https://images.unsplash.com/photo-1512568400610-62da28bc8a13?auto=format&fit=crop&q=80&w=800",
   },
 ];
 
@@ -142,11 +141,17 @@ const COFFEE_DATA = [
 
 const Home = () => {
   const { theme, isDark, toggleTheme } = useTheme();
+  const insets = useSafeAreaInsets();
   const [selectedCategory, setSelectedCategory] = useState("All Coffee");
   const [searchQuery, setSearchQuery] = useState("");
   const [activeBannerIndex, setActiveBannerIndex] = useState(0);
   const [location, setLocation] = useState("islamabad");
   const [filteredData, setFilteredData] = useState(COFFEE_DATA);
+
+  const scrollY = useSharedValue(0);
+  const onScroll = useAnimatedScrollHandler((event) => {
+    scrollY.value = event.contentOffset.y;
+  });
 
   const bannerRef = useRef<FlatList>(null);
 
@@ -236,98 +241,105 @@ const Home = () => {
       {/* Background Header Layer */}
       <View style={[styles.headerBackground, { backgroundColor: theme.header }]} />
 
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-      >
-        {/* Top Header */}
-        <View style={styles.topHeader}>
-          <View>
-            <Text style={styles.locationLabel}>Location</Text>
-            <View style={styles.locationDropdownContainer}>
-              <Dropdown
-                style={styles.dropdown}
-                data={locations}
-                labelField="label"
-                valueField="value"
-                value={location}
-                onChange={(item) => setLocation(item.value)}
-                selectedTextStyle={[styles.dropdownSelectedText, { color: theme.text }]}
-                renderRightIcon={() => (
-                  <Ionicons name="chevron-down" size={16} color={theme.text} style={{ marginLeft: 4 }} />
-                )}
-              />
-            </View>
-          </View>
-          <View style={styles.headerActions}>
-            <TouchableOpacity onPress={toggleTheme} style={styles.themeBtn}>
-              <Ionicons name={isDark ? "sunny" : "moon"} size={22} color={theme.textMuted} />
-            </TouchableOpacity>
-            <TouchableOpacity onPress={handleSignOut} style={styles.logoutBtn}>
-              <Ionicons name="log-out-outline" size={24} color={theme.textMuted} />
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Search Bar Row */}
-        <View style={styles.searchRow}>
-          <View style={[styles.searchBar, { backgroundColor: theme.searchBg }]}>
-            <Ionicons name="search" size={20} color={theme.searchIcon} style={styles.searchIcon} />
-            <TextInput
-              style={[styles.searchInput, { color: theme.text }]}
-              placeholder="Search coffee..."
-              placeholderTextColor={theme.searchIcon}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
+      {/* Top Header - FIXED */}
+      <View style={[styles.topHeader, { marginTop: insets.top + responsiveHeight(1) }]}>
+        <View>
+          <Text style={styles.locationLabel}>Location</Text>
+          <View style={styles.locationDropdownContainer}>
+            <Dropdown
+              style={styles.dropdown}
+              data={locations}
+              labelField="label"
+              valueField="value"
+              value={location}
+              onChange={(item) => setLocation(item.value)}
+              selectedTextStyle={[styles.dropdownSelectedText, { color: theme.text }]}
+              renderRightIcon={() => (
+                <Ionicons name="chevron-down" size={16} color={theme.text} style={{ marginLeft: 4 }} />
+              )}
             />
           </View>
-          <TouchableOpacity style={styles.filterBtn}>
-            <Ionicons name="options-outline" size={24} color="white" />
+        </View>
+        <View style={styles.headerActions}>
+          <TouchableOpacity onPress={toggleTheme} style={styles.themeBtn}>
+            <Ionicons name={isDark ? "sunny" : "moon"} size={22} color={theme.textMuted} />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={handleSignOut} style={styles.logoutBtn}>
+            <Ionicons name="log-out-outline" size={24} color={theme.textMuted} />
           </TouchableOpacity>
         </View>
+      </View>
 
-        {/* Banner Slider */}
-        <View style={styles.bannerListContainer}>
-          <FlatList
-            ref={bannerRef}
-            data={BANNERS}
-            horizontal
-            pagingEnabled
-            showsHorizontalScrollIndicator={false}
-            onMomentumScrollEnd={(e) => {
-              setActiveBannerIndex(Math.round(e.nativeEvent.contentOffset.x / (SCREEN_WIDTH * 0.9)));
-            }}
-            renderItem={({ item }) => (
-              <View style={styles.bannerSlide}>
-                <Image
-                  source={item.image}
-                  style={styles.bannerImage}
-                  contentFit="cover"
-                  transition={1000}
-                  placeholder={{ uri: "https://images.unsplash.com/photo-1512568400610-62da28bc8a13?auto=format&fit=crop&q=10&w=100" }}
-                />
-                <View style={styles.bannerOverlay}>
-                  <Text style={styles.promoTag}>{item.tag}</Text>
-                  <Text style={styles.bannerTitle}>{item.title}</Text>
-                </View>
-              </View>
-            )}
-            keyExtractor={(item) => item.id.toString()}
+      {/* Search Bar Row - FIXED */}
+      <View style={styles.searchRow}>
+        <View style={[styles.searchBar, { backgroundColor: theme.searchBg }]}>
+          <Ionicons name="search" size={20} color={theme.searchIcon} style={styles.searchIcon} />
+          <TextInput
+            style={[styles.searchInput, { color: theme.text }]}
+            placeholder="Search coffee..."
+            placeholderTextColor={theme.searchIcon}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
           />
-          {/* Banner Dots */}
-          <View style={styles.bannerDots}>
-            {BANNERS.map((_, index) => (
-              <View
-                key={index}
-                style={[
-                  styles.dot,
-                  { backgroundColor: isDark ? "#333" : "#DDD" },
-                  activeBannerIndex === index && styles.activeDot,
-                ]}
-              />
-            ))}
-          </View>
         </View>
+        <TouchableOpacity style={styles.filterBtn}>
+          <Ionicons name="options-outline" size={24} color="white" />
+        </TouchableOpacity>
+      </View>
+
+      {/* Banner Slider - FIXED */}
+      <View style={styles.bannerListContainer}>
+        <FlatList
+          ref={bannerRef}
+          data={BANNERS}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          onMomentumScrollEnd={(e) => {
+            setActiveBannerIndex(Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH));
+          }}
+          renderItem={({ item }) => (
+            <View style={styles.bannerSlide}>
+              <Image
+                source={item.image}
+                style={styles.bannerImage}
+                contentFit="cover"
+                transition={1000}
+                placeholder="L05#_]fQfQfQfQfQfQfQfQfQfQfQ"
+              />
+              <View style={styles.bannerOverlay}>
+                <Text style={styles.promoTag}>{item.tag}</Text>
+                <Text style={styles.bannerTitle}>{item.title}</Text>
+              </View>
+            </View>
+          )}
+          keyExtractor={(item) => item.id.toString()}
+        />
+        {/* Banner Dots - Animated based on scroll */}
+        <Animated.View style={[styles.bannerDots, useAnimatedStyle(() => ({
+          opacity: interpolate(scrollY.value, [0, 50], [1, 0]),
+          transform: [{ translateY: interpolate(scrollY.value, [0, 50], [0, -10]) }]
+        }))]}>
+          {BANNERS.map((_, index) => (
+            <View
+              key={index}
+              style={[
+                styles.dot,
+                { backgroundColor: isDark ? "#333" : "#DDD" },
+                activeBannerIndex === index && styles.activeDot,
+              ]}
+            />
+          ))}
+        </Animated.View>
+      </View>
+
+      {/* SCROLLABLE Area starts here */}
+      <Animated.ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+        onScroll={onScroll}
+        scrollEventThrottle={16}
+      >
 
         {/* Categories */}
         <ScrollView
@@ -376,7 +388,7 @@ const Home = () => {
             </View>
           )}
         </View>
-      </ScrollView>
+      </Animated.ScrollView>
     </View>
   );
 };
@@ -392,10 +404,10 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    height: responsiveHeight(32),
+    height: responsiveHeight(18), // Cover top header and search bar
   },
   scrollContent: {
-    paddingTop: responsiveHeight(6),
+    paddingTop: responsiveHeight(2),
     paddingBottom: 40,
   },
   topHeader: {
@@ -403,7 +415,8 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: responsiveWidth(6),
-    marginBottom: responsiveHeight(3),
+    marginBottom: responsiveHeight(2.5),
+    zIndex: 10,
   },
   locationLabel: {
     color: "#666",
@@ -466,11 +479,11 @@ const styles = StyleSheet.create({
   },
   // Banner Slider
   bannerListContainer: {
-    marginBottom: responsiveHeight(3),
+    marginBottom: responsiveHeight(-1),
   },
   bannerSlide: {
     width: SCREEN_WIDTH * 0.9,
-    height: responsiveHeight(18),
+    height: responsiveHeight(22),
     marginHorizontal: SCREEN_WIDTH * 0.05,
     borderRadius: 20,
     overflow: "hidden",

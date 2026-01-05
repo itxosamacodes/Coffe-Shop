@@ -20,11 +20,13 @@ import {
   responsiveHeight,
   responsiveWidth,
 } from "react-native-responsive-dimensions";
+import { useTheme } from "../../context/ThemeContext";
 import { CafeLocation, getCafeLocation } from "../../utils/cafeLocations";
 import { supabase } from "../../utils/supabase";
 
 const MapScreen = () => {
   const params = useLocalSearchParams();
+  const { theme, isDark } = useTheme();
   const orderId = params.orderId as string;
   const deliveryAddress = (params.address as string) || "Jl. Kpg Sutoyo";
 
@@ -406,13 +408,13 @@ const MapScreen = () => {
 
         <View style={styles.header}>
           <TouchableOpacity
-            style={styles.iconBox}
+            style={[styles.iconBox, { backgroundColor: theme.surface }]}
             onPress={() => router.back()}
           >
-            <Ionicons name="chevron-back" size={24} color="black" />
+            <Ionicons name="chevron-back" size={24} color={theme.text} />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.iconBox} onPress={locateSelf}>
-            <Ionicons name="locate" size={24} color="black" />
+          <TouchableOpacity style={[styles.iconBox, { backgroundColor: theme.surface }]} onPress={locateSelf}>
+            <Ionicons name="locate" size={24} color={theme.text} />
           </TouchableOpacity>
         </View>
 
@@ -420,15 +422,16 @@ const MapScreen = () => {
           ref={bottomSheetRef}
           snapPoints={snapPoints}
           enablePanDownToClose={false}
-          handleIndicatorStyle={{ backgroundColor: "#ddd", width: 40 }}
+          handleIndicatorStyle={{ backgroundColor: theme.border, width: 40 }}
+          backgroundStyle={{ backgroundColor: theme.surface }}
         >
-          <BottomSheetView style={styles.bottomBar}>
+          <BottomSheetView style={[styles.bottomBar, { backgroundColor: theme.surface }]}>
             {loading ? (
               <ActivityIndicator color="#C67C4E" />
             ) : (
               <Animated.View entering={FadeIn.duration(500)}>
                 <Animated.View layout={Layout.springify()}>
-                  <Text style={styles.statusTitle}>
+                  <Text style={[styles.statusTitle, { color: theme.text }]}>
                     {orderStatus === "delivered"
                       ? "📍 Rider has arrived!"
                       : orderStatus === "picked_up"
@@ -444,26 +447,26 @@ const MapScreen = () => {
                 </Animated.View>
 
                 {orderDetails && (
-                  <View style={styles.orderSummary}>
-                    <Text style={styles.orderDetailText}>
+                  <View style={[styles.orderSummary, { backgroundColor: theme.background, borderColor: theme.border }]}>
+                    <Text style={[styles.orderDetailText, { color: theme.textMuted }]}>
                       {orderDetails.quantity}x {orderDetails.item_name}
                     </Text>
-                    <Text style={styles.orderPriceText}>
+                    <Text style={[styles.orderPriceText, { color: theme.primary }]}>
                       ${orderDetails.total_price.toFixed(2)}
                     </Text>
                   </View>
                 )}
 
                 <View style={styles.progressRow}>
-                  <View style={[styles.dot, { backgroundColor: "#C67C4E" }]} />
+                  <View style={[styles.dot, { backgroundColor: theme.primary }]} />
                   <View
                     style={[
                       styles.line,
                       {
                         backgroundColor:
                           ["accepted", "picked_up", "delivered"].includes(orderStatus)
-                            ? "#C67C4E"
-                            : "#eee",
+                            ? theme.primary
+                            : theme.border,
                       },
                     ]}
                   />
@@ -473,8 +476,8 @@ const MapScreen = () => {
                       {
                         backgroundColor:
                           ["accepted", "picked_up", "delivered"].includes(orderStatus)
-                            ? "#C67C4E"
-                            : "#eee",
+                            ? theme.primary
+                            : theme.border,
                       },
                     ]}
                   />
@@ -483,7 +486,7 @@ const MapScreen = () => {
                       styles.line,
                       {
                         backgroundColor:
-                          orderStatus === "delivered" ? "#C67C4E" : "#eee",
+                          orderStatus === "delivered" ? theme.primary : theme.border,
                       },
                     ]}
                   />
@@ -492,35 +495,35 @@ const MapScreen = () => {
                       styles.dot,
                       {
                         backgroundColor:
-                          orderStatus === "delivered" ? "#C67C4E" : "#eee",
+                          orderStatus === "delivered" ? theme.primary : theme.border,
                       },
                     ]}
                   />
                 </View>
 
-                <View style={styles.profile}>
-                  <View style={styles.iconContainer}>
+                <View style={[styles.profile, { backgroundColor: theme.background, borderColor: theme.border }]}>
+                  <View style={[styles.iconContainer, { backgroundColor: isDark ? "rgba(198, 124, 78, 0.2)" : "#F9F2ED" }]}>
                     <MaterialCommunityIcons
                       name="bike"
                       size={32}
-                      color="#C67C4E"
+                      color={theme.primary}
                     />
                   </View>
                   <View style={{ flex: 1, marginLeft: responsiveWidth(4) }}>
-                    <Text style={styles.cardTitle}>
+                    <Text style={[styles.cardTitle, { color: theme.text }]}>
                       {riderInfo ? riderInfo.name : "Finding Courier..."}
                     </Text>
-                    <Text style={styles.cardSub}>
+                    <Text style={[styles.cardSub, { color: theme.textMuted }]}>
                       {distance} • {eta} {orderStatus === "accepted" ? "to cafe" : "away"}
                     </Text>
                   </View>
                   <TouchableOpacity
-                    style={styles.callBtn}
+                    style={[styles.callBtn, { backgroundColor: theme.surface, borderColor: theme.border }]}
                     onPress={() =>
                       riderInfo && Linking.openURL(`tel:${riderInfo.phone}`)
                     }
                   >
-                    <Ionicons name="call" size={20} color="#C67C4E" />
+                    <Ionicons name="call" size={20} color={theme.primary} />
                   </TouchableOpacity>
                 </View>
 
@@ -600,7 +603,6 @@ const styles = StyleSheet.create({
   bottomBar: {
     padding: responsiveWidth(5),
     alignItems: "center",
-    backgroundColor: "white"
   },
   statusTitle: {
     fontSize: responsiveFontSize(2.4),
